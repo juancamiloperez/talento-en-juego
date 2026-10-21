@@ -1,0 +1,1228 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>Talento en Juego</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Figtree:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+/* Layout: oficina 3D a la izquierda (tablero de juego), panel de decisiones a la derecha; en celular se apilan. */
+:root{
+  --bg:#E8EDF3; --surface:#FFFFFF; --surface-2:#F3F6FA; --ink:#1A2640; --muted:#56637D; --line:#CBD5E2;
+  --accent:#E3A11B; --accent-ink:#3A2900; --accent-soft:#FBEBC6;
+  --good:#23895C; --warn:#C47A10; --bad:#C4462F;
+  --scene-bg:#DCE4EE; --scene-floor:#D2DBE6; --scene-wall:#BFCADA;
+  --f-display:"Bricolage Grotesque", "Trebuchet MS", sans-serif;
+  --f-body:"Figtree", "Segoe UI", system-ui, sans-serif;
+  --f-mono:"JetBrains Mono", ui-monospace, "Cascadia Mono", monospace;
+  --r:12px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0F1628; --surface:#172139; --surface-2:#1D2945; --ink:#E7ECF6; --muted:#9BA8C3; --line:#2B3858;
+  --accent:#F2B33D; --accent-ink:#2B1E00; --accent-soft:#3A2F17;
+  --good:#45BF88; --warn:#E9A23B; --bad:#EC6B55;
+  --scene-bg:#121B31; --scene-floor:#1B2643; --scene-wall:#24314F; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0F1628; --surface:#172139; --surface-2:#1D2945; --ink:#E7ECF6; --muted:#9BA8C3; --line:#2B3858;
+  --accent:#F2B33D; --accent-ink:#2B1E00; --accent-soft:#3A2F17;
+  --good:#45BF88; --warn:#E9A23B; --bad:#EC6B55;
+  --scene-bg:#121B31; --scene-floor:#1B2643; --scene-wall:#24314F; color-scheme:dark}
+
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.5;
+  padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));padding-block:14px 28px}
+h1,h2,h3{font-family:var(--f-display);text-wrap:balance;margin:0;line-height:1.15}
+button,input{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.wrap{max-width:1280px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+
+.top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:10px}
+.brand-mark{width:34px;height:34px;border-radius:9px;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;font-family:var(--f-display);font-weight:800;font-size:17px}
+.brand h1{font-size:22px;font-weight:800;letter-spacing:-.01em}
+.brand small{display:block;color:var(--muted);font-size:12.5px;letter-spacing:.02em}
+.who{font-size:13px;color:var(--muted);text-align:right}
+.who b{color:var(--ink);font-weight:600}
+.ghost{background:none;border:1px solid var(--line);border-radius:999px;padding:6px 14px;cursor:pointer;font-size:13px;font-weight:600}
+.ghost:hover{border-color:var(--accent)}
+
+.main{display:grid;gap:14px;grid-template-columns:minmax(0,1fr)}
+@media (min-width:920px){.main{grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);align-items:start}
+  .stage{position:sticky;top:14px;height:min(80vh,740px)!important}}
+.stage{position:relative;height:max(280px,42vh);border-radius:var(--r);overflow:hidden;background:var(--scene-bg);border:1px solid var(--line)}
+.stage canvas{display:block;width:100%;height:100%}
+.stage-hud{position:absolute;left:12px;right:12px;top:12px;display:flex;justify-content:space-between;gap:8px;pointer-events:none;flex-wrap:wrap}
+.chip{background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:5px 12px;font-size:12.5px;font-weight:600;display:inline-flex;gap:6px;align-items:center}
+.chip .mono{font-family:var(--f-mono)}
+.stars{color:var(--accent);letter-spacing:1px}
+.stage-fallback{position:absolute;inset:0;display:grid;place-items:center;padding:20px;text-align:center;color:var(--muted)}
+
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:20px;display:flex;flex-direction:column;gap:16px;min-width:0}
+.eyebrow{font-size:11.5px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
+.lead{color:var(--muted);margin:0;max-width:62ch}
+p{margin:0}
+
+.field{display:flex;flex-direction:column;gap:6px}
+.field label{font-weight:600;font-size:14px}
+.field input{border:1.5px solid var(--line);background:var(--surface-2);border-radius:10px;padding:11px 12px;width:100%}
+.field input:focus{border-color:var(--accent);outline:none}
+.field .hint{font-size:12.5px;color:var(--muted)}
+.field .err{font-size:12.5px;color:var(--bad);font-weight:600}
+.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+
+.btn{background:var(--accent);color:var(--accent-ink);border:0;border-radius:10px;padding:12px 18px;font-weight:700;cursor:pointer;font-size:15px}
+.btn:hover{filter:brightness(1.05)}
+.btn[disabled]{opacity:.5;cursor:not-allowed}
+.btn-line{background:none;border:1.5px solid var(--line);border-radius:10px;padding:10px 16px;font-weight:600;cursor:pointer}
+.btn-line:hover{border-color:var(--accent)}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+
+.meters{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.meter{display:flex;flex-direction:column;gap:5px}
+.meter-top{display:flex;justify-content:space-between;font-size:12.5px;font-weight:600}
+.meter-top .mono{font-size:12.5px}
+.bar{height:8px;border-radius:99px;background:var(--surface-2);border:1px solid var(--line);overflow:hidden}
+.bar i{display:block;height:100%;border-radius:99px;background:var(--good);transition:width .6s ease, background .6s}
+
+.brief-list{display:grid;gap:8px;margin:0;padding:0;list-style:none}
+.brief-list li{display:flex;gap:10px;align-items:baseline}
+.brief-list b{font-family:var(--f-mono);color:var(--accent);min-width:2ch}
+
+.case{background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:6px}
+.case h2{font-size:21px}
+.area{display:inline-block;align-self:flex-start;background:var(--accent-soft);color:var(--ink);font-size:12px;font-weight:700;border-radius:6px;padding:2px 8px}
+.options{display:grid;gap:10px}
+.opt{display:grid;grid-template-columns:auto minmax(0,1fr);gap:12px;text-align:left;background:var(--surface);border:1.5px solid var(--line);border-radius:10px;padding:12px 14px;cursor:pointer;transition:border-color .15s, transform .15s}
+.opt:hover:not([disabled]){border-color:var(--accent);transform:translateY(-1px)}
+.opt .k{font-family:var(--f-mono);font-weight:700;width:28px;height:28px;border-radius:7px;background:var(--surface-2);border:1px solid var(--line);display:grid;place-items:center}
+.opt[disabled]{cursor:default}
+.opt.chosen{border-color:var(--accent);background:var(--accent-soft)}
+.opt.dim{opacity:.55}
+
+.feedback{border-radius:10px;padding:14px 16px;border:1.5px solid var(--line);display:flex;flex-direction:column;gap:10px;animation:rise .35s ease}
+.feedback.s3{border-color:var(--good)} .feedback.s1{border-color:var(--warn)} .feedback.s0{border-color:var(--bad)}
+.fb-head{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.fb-head h3{font-size:18px}
+.deltas{display:flex;gap:6px;flex-wrap:wrap}
+.delta{font-family:var(--f-mono);font-size:12px;font-weight:700;border-radius:6px;padding:3px 8px;border:1px solid var(--line)}
+.delta.up{color:var(--good)} .delta.down{color:var(--bad)} .delta.zero{color:var(--muted)}
+.habit{font-size:13px;color:var(--muted)} .habit b{color:var(--ink)}
+.event{background:var(--accent-soft);border-color:var(--accent)}
+@keyframes rise{from{opacity:.0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+.score-card{display:grid;grid-template-columns:auto minmax(0,1fr);gap:18px;align-items:center}
+.dial{width:118px;height:118px;border-radius:50%;display:grid;place-items:center;background:conic-gradient(var(--accent) calc(var(--p)*1%), var(--surface-2) 0);position:relative}
+.dial::after{content:"";position:absolute;inset:11px;border-radius:50%;background:var(--surface)}
+.dial span{position:relative;z-index:1;font-family:var(--f-display);font-weight:800;font-size:32px}
+.nota{font-family:var(--f-display);font-weight:800;font-size:40px;line-height:1}
+.nota small{font-family:var(--f-body);font-size:13px;color:var(--muted);font-weight:500}
+.recap{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.recap li{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;font-size:13.5px;padding:8px 0;border-bottom:1px solid var(--line)}
+.recap small{color:var(--muted);display:block}
+.ticket{border:1.5px dashed var(--line);border-radius:10px;padding:12px 14px;font-family:var(--f-mono);font-size:12.5px;white-space:pre-wrap;word-break:break-word;background:var(--surface-2)}
+.note{font-size:13px;color:var(--muted)}
+.note.ok{color:var(--good)} .note.bad{color:var(--bad)}
+
+.tbl-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:10px}
+table{border-collapse:collapse;width:100%;font-size:13px;min-width:620px}
+th,td{padding:8px 10px;text-align:left;border-bottom:1px solid var(--line);white-space:nowrap}
+th{font-size:11.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);background:var(--surface-2)}
+td.num{font-family:var(--f-mono);font-variant-numeric:tabular-nums;text-align:right}
+
+.hub{display:grid;gap:12px}
+.hub-card{text-align:left;background:var(--surface-2);border:1.5px solid var(--line);border-radius:var(--r);padding:16px 18px;cursor:pointer;display:flex;flex-direction:column;gap:6px;transition:border-color .15s, transform .15s}
+.hub-card:hover{border-color:var(--accent);transform:translateY(-1px)}
+.hub-card h3{font-size:19px}
+.hub-card .meta{font-size:12.5px;font-weight:700;color:var(--muted);font-family:var(--f-mono)}
+.htabs{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.htab{min-width:40px;height:40px;border-radius:10px;border:1.5px solid var(--line);background:var(--surface);font-family:var(--f-mono);font-weight:700;cursor:pointer;position:relative;padding:0 10px}
+.htab:hover{border-color:var(--accent)}
+.htab[aria-current="true"]{border-color:var(--accent);background:var(--accent-soft)}
+.htab.done::after{content:"✓";position:absolute;top:-7px;right:-7px;width:18px;height:18px;border-radius:50%;background:var(--good);color:var(--surface);font-size:11px;display:grid;place-items:center}
+.htab.wide{font-family:var(--f-body);font-size:13px}
+.w-block{display:flex;flex-direction:column;gap:8px}
+.w-block h3{font-size:16.5px}
+.w-input{border:1.5px solid var(--line);background:var(--surface-2);border-radius:10px;padding:10px 12px;width:100%;font:inherit;color:inherit}
+.w-input:focus{border-color:var(--accent);outline:none}
+textarea.w-input{resize:vertical;min-height:64px;line-height:1.45}
+.row > .w-input{flex:1 1 160px;width:auto;min-width:0}
+.circles{border:2px dashed var(--line);border-radius:28px;padding:14px;display:flex;flex-direction:column;gap:10px;background:var(--surface-2)}
+.inner{border:2px solid var(--accent);border-radius:22px;padding:12px;background:var(--surface);display:flex;flex-direction:column;gap:8px}
+.ring-label{font-size:11.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.chips{display:flex;flex-wrap:wrap;gap:6px;min-height:30px;align-items:center}
+.cbtn{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:4px 4px 4px 12px;font-size:13px;cursor:pointer;display:inline-flex;gap:4px;align-items:center}
+.inner .cbtn{background:var(--accent-soft);border-color:var(--accent)}
+.x{width:22px;height:22px;border-radius:50%;display:inline-grid;place-items:center;color:var(--muted);background:none;border:0;cursor:pointer;font-size:15px;line-height:1;padding:0}
+.x:hover{background:var(--line);color:var(--ink)}
+.rf{display:flex;flex-direction:column;gap:5px;padding:10px 0;border-bottom:1px solid var(--line)}
+.rf q{font-style:italic;color:var(--muted)}
+.ok-t{color:var(--good);font-size:12.5px;font-weight:600}
+.warn-t{color:var(--warn);font-size:12.5px;font-weight:600}
+.matrix{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.quad{border:1.5px solid var(--line);border-radius:10px;padding:10px;display:flex;flex-direction:column;gap:4px;min-height:112px;min-width:0;background:var(--surface)}
+.quad.q2{border-color:var(--good);background:var(--surface-2)}
+.quad h4{margin:0;font-size:12.5px;font-weight:700}
+.quad .hrs{font-family:var(--f-mono);font-size:20px;font-weight:700}
+.quad ul{list-style:none;margin:0;padding:0;font-size:12.5px;display:grid;gap:2px}
+.quad li{display:flex;justify-content:space-between;align-items:center;gap:6px;min-width:0}
+.quad li span{overflow-wrap:anywhere}
+.split{display:flex;height:14px;border-radius:99px;overflow:hidden;border:1px solid var(--line);background:var(--surface-2)}
+.split i{background:var(--accent);transition:width .25s}
+.split b{background:var(--good);transition:width .25s}
+.radios{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.radio{display:flex;gap:8px;align-items:flex-start;border:1.5px solid var(--line);border-radius:10px;padding:10px 12px;cursor:pointer;font-size:14px}
+.radio:has(input:checked){border-color:var(--accent);background:var(--accent-soft)}
+.radio input{accent-color:var(--accent);margin-top:3px}
+.timer{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.clock{font-family:var(--f-mono);font-size:34px;font-weight:700;min-width:4.5ch;font-variant-numeric:tabular-nums}
+.clock.end{color:var(--bad)}
+.req{list-style:none;margin:0;padding:12px 14px;border-radius:10px;background:var(--surface-2);border:1px solid var(--line);display:grid;gap:4px;font-size:13.5px}
+.req li::before{content:"○  ";color:var(--muted)}
+.req li.ok{color:var(--muted)}
+.req li.ok::before{content:"✓  ";color:var(--good);font-weight:700}
+.two{display:grid;gap:14px;grid-template-columns:minmax(0,1fr)}
+@media (min-width:560px){.two{grid-template-columns:minmax(0,260px) minmax(0,1fr);align-items:center}}
+.radar{width:100%;max-width:280px;height:auto;justify-self:center}
+.radar .g{fill:none;stroke:var(--line);stroke-width:1}
+.radar .a{fill:var(--accent);fill-opacity:.28;stroke:var(--accent);stroke-width:2}
+.radar .d{fill:var(--accent)}
+.radar text{fill:var(--muted);font-size:12px;font-family:var(--f-body);font-weight:600}
+.sliders{display:grid;gap:12px}
+.sl{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 10px;align-items:center;font-size:14px}
+.sl input[type=range]{grid-column:1/-1;width:100%;accent-color:var(--accent)}
+.seg{display:inline-flex;border:1.5px solid var(--line);border-radius:10px;overflow:hidden;align-self:flex-start}
+.seg button{border:0;background:none;padding:8px 14px;font-weight:600;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
+.adj{width:84px;padding:6px 8px;text-align:right}
+td.final{font-weight:700}
+.pill{display:inline-block;border-radius:999px;padding:2px 9px;font-size:12px;font-weight:700;border:1px solid var(--line);color:var(--muted)}
+.pill.ok{color:var(--good);border-color:var(--good)}
+.pill.low{color:var(--bad);border-color:var(--bad)}
+@media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true">TH</div>
+      <div><h1>Talento en Juego</h1><small>Simulador de Gestión del Talento Humano · Administración Comercial</small></div>
+    </div>
+    <div class="row">
+      <div class="who" id="who" hidden></div>
+      <button class="ghost" id="menuBtn" hidden>Menú</button>
+      <button class="ghost" id="teacherBtn" hidden>Resultados del grupo</button>
+    </div>
+  </header>
+
+  <main class="main">
+    <section class="stage" id="stage" aria-label="Oficina en 3D de Comercializadora Andina">
+      <canvas id="scene"></canvas>
+      <div class="stage-hud">
+        <span class="chip" id="hudStep">Oficina · vista general</span>
+        <span class="chip"><span class="stars" id="hudStars">☆</span><span class="mono" id="hudStarsN">0/24</span></span>
+      </div>
+      <div class="stage-fallback" id="fallback" hidden>La vista 3D no está disponible en este navegador. Puedes jugar igual desde el panel.</div>
+    </section>
+
+    <section class="panel" id="panel">
+      <!-- INGRESO -->
+      <div id="sLogin" class="screen">
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <span class="eyebrow">Ingreso del estudiante</span>
+          <h2 style="font-size:26px">Dirige el talento humano de una empresa por un día</h2>
+          <p class="lead">Toma 8 decisiones de gestión humana, enfrenta 2 eventos sorpresa y recibe tu puntaje, tu nota y un código de verificación para tu docente.</p>
+        </div>
+        <form id="loginForm" novalidate style="display:flex;flex-direction:column;gap:14px">
+          <div class="field">
+            <label for="fName">Nombres y apellidos completos</label>
+            <input id="fName" autocomplete="name" placeholder="Ej.: María Fernanda Rojas Pérez" maxlength="80">
+            <span class="err" id="eName" hidden></span>
+          </div>
+          <div class="field">
+            <label for="fId">Número de cédula</label>
+            <input id="fId" class="mono" inputmode="numeric" autocomplete="off" placeholder="Solo números" maxlength="11">
+            <span class="err" id="eId" hidden></span>
+          </div>
+          <div class="field">
+            <label for="fGroup">Grupo o curso <span style="color:var(--muted);font-weight:400">(opcional)</span></label>
+            <input id="fGroup" placeholder="Ej.: Talento Humano · Grupo 02" maxlength="40">
+          </div>
+          <div class="row"><button class="btn" type="submit">Entrar al simulador</button></div>
+          <p class="note">Tus datos se usan solo para identificar tu resultado ante el docente.</p>
+        </form>
+      </div>
+
+      <!-- MENÚ -->
+      <div id="sHub" class="screen" hidden>
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <span class="eyebrow">Menú principal</span>
+          <h2 style="font-size:24px" id="hubTitle">¿Qué vas a trabajar hoy?</h2>
+        </div>
+        <div class="hub">
+          <button class="hub-card" id="goSim" type="button">
+            <span class="eyebrow">Opción 1</span>
+            <h3>Simulador de decisiones</h3>
+            <p class="note">Dirige el talento humano de una empresa en una oficina 3D. Ocho casos, dos eventos sorpresa, puntaje y nota.</p>
+            <span class="meta" id="hubSim">8 decisiones · puntaje y nota</span>
+          </button>
+          <button class="hub-card" id="goTaller" type="button">
+            <span class="eyebrow">Opción 2</span>
+            <h3>Taller de los 7 hábitos</h3>
+            <p class="note">Siete actividades prácticas: círculos de influencia, misión personal, matriz del tiempo, negociación, escucha, sinergia y renovación.</p>
+            <span class="meta" id="hubProg">0 de 7 hábitos completos</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- TALLER -->
+      <div id="sTaller" class="screen" hidden>
+        <div class="row" style="justify-content:space-between">
+          <div class="htabs" id="wTabs" role="group" aria-label="Hábitos"></div>
+          <span class="note mono" id="wProg"></span>
+        </div>
+        <div id="wHabit" style="display:flex;flex-direction:column;gap:16px"></div>
+        <p class="note" id="wNote"></p>
+      </div>
+
+      <!-- BRIEFING -->
+      <div id="sBrief" class="screen" hidden>
+        <span class="eyebrow">Tu misión</span>
+        <h2 style="font-size:24px" id="briefTitle">Bienvenido(a)</h2>
+        <p class="lead">Acabas de asumir la Dirección de Talento Humano de <b>Comercializadora Andina S.A.S.</b>, una distribuidora de consumo masivo con 120 colaboradores. La empresa tiene alta rotación, conflictos en bodega y un presupuesto ajustado.</p>
+        <ul class="brief-list">
+          <li><b>1</b><span>Recorre 8 áreas de la oficina. En cada una eliges entre 3 opciones.</span></li>
+          <li><b>2</b><span>Cada decisión mueve 4 indicadores: clima laboral, productividad, finanzas y cumplimiento legal.</span></li>
+          <li><b>3</b><span>Ganas hasta 3 estrellas por decisión. Dos eventos sorpresa pondrán a prueba tus indicadores.</span></li>
+          <li><b>4</b><span>Al final recibes puntaje sobre 100, nota de 1,0 a 5,0 y tu perfil como gestor(a).</span></li>
+        </ul>
+        <div class="meters" id="metersBrief"></div>
+        <div class="row"><button class="btn" id="startBtn">Comenzar recorrido</button></div>
+      </div>
+
+      <!-- JUEGO -->
+      <div id="sPlay" class="screen" hidden>
+        <div class="meters" id="meters"></div>
+        <div class="case" id="caseBox"></div>
+        <div class="options" id="options" role="group" aria-label="Opciones de decisión"></div>
+        <div id="fbBox"></div>
+      </div>
+
+      <!-- RESULTADO -->
+      <div id="sResult" class="screen" hidden>
+        <span class="eyebrow">Resultado final</span>
+        <div class="score-card">
+          <div class="dial" id="dial" style="--p:0"><span id="scoreN">0</span></div>
+          <div style="display:flex;flex-direction:column;gap:6px;min-width:0">
+            <div class="nota" id="notaN">0,0 <small>nota sobre 5,0</small></div>
+            <h2 style="font-size:20px" id="perfil">Perfil</h2>
+            <p class="note" id="perfilTxt"></p>
+          </div>
+        </div>
+        <div class="meters" id="metersEnd"></div>
+        <div>
+          <span class="eyebrow">Tus decisiones</span>
+          <ul class="recap" id="recap"></ul>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <span class="eyebrow">Comprobante para el docente</span>
+          <div class="ticket" id="ticket"></div>
+          <p class="note" id="saveNote">Guardando resultado…</p>
+          <div class="row">
+            <button class="btn" id="copyBtn">Copiar comprobante</button>
+            <button class="btn-line" id="dlBtn" hidden>Descargar comprobante</button>
+            <button class="btn-line" id="againBtn">Jugar de nuevo</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- DOCENTE -->
+      <div id="sTeacher" class="screen" hidden>
+        <div class="row" style="justify-content:space-between">
+          <div><span class="eyebrow">Panel docente</span><h2 style="font-size:22px">Resultados del grupo</h2></div>
+          <button class="btn-line" id="closeTeacher">Volver</button>
+        </div>
+        <div class="seg" role="group" aria-label="Tipo de resultado"><button type="button" data-ttab="notas" aria-pressed="true">Notas</button><button type="button" data-ttab="sim" aria-pressed="false">Simulador</button><button type="button" data-ttab="taller" aria-pressed="false">Taller 7 hábitos</button></div>
+        <p class="note" id="tNote">Cargando…</p>
+        <div class="tbl-wrap" id="tWrap" hidden><table><thead id="tHead"></thead><tbody id="tBody"></tbody></table></div>
+        <div class="row"><button class="btn" id="csvBtn" hidden>Exportar CSV</button><button class="btn-line" id="csvCopy" hidden>Copiar CSV</button></div>
+        <div id="tDetail" hidden style="display:flex;flex-direction:column;gap:8px"><span class="eyebrow" id="tDetailT"></span><div class="ticket" id="tDetailBody"></div></div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function(){
+"use strict";
+/* ---------------- Contenido ---------------- */
+const IND = [
+  {k:"clima", n:"Clima laboral"},
+  {k:"prod",  n:"Productividad"},
+  {k:"fin",   n:"Finanzas"},
+  {k:"legal", n:"Cumplimiento legal"}
+];
+const HAB = {
+  1:"Hábito 1 · Ser proactivo", 2:"Hábito 2 · Empezar con un fin en mente", 3:"Hábito 3 · Poner primero lo primero",
+  4:"Hábito 4 · Pensar ganar-ganar", 5:"Hábito 5 · Buscar primero entender", 6:"Hábito 6 · Sinergizar", 7:"Hábito 7 · Afilar la sierra"
+};
+// d = [clima, prod, fin, legal]
+const CASES = [
+ {area:"Reclutamiento", title:"Se necesita jefe de ventas", habit:2,
+  text:"El jefe de ventas renunció y el gerente quiere el cargo cubierto en dos semanas. El equipo comercial está atento a cómo se decide.",
+  opts:[
+   {t:"Ascender de inmediato al vendedor con más ventas, sin proceso.", d:[-6,-4,3,-2], s:1, f:"Es rápido, pero vender bien no garantiza saber liderar. Pierdes a tu mejor vendedor y el equipo percibe poca transparencia."},
+   {t:"Definir el perfil por competencias y abrir convocatoria interna y externa.", d:[8,6,-2,4], s:3, f:"Defines primero qué necesita el cargo y das igualdad de oportunidades. Toma más tiempo, pero reduce el riesgo de una mala contratación."},
+   {t:"Contratar al sobrino del gerente, que viene \"muy recomendado\".", d:[-12,-6,0,-4], s:0, f:"El favoritismo destruye la confianza y la meritocracia. Los mejores candidatos internos empiezan a buscar empleo afuera."}
+  ]},
+ {area:"Selección", title:"Dos finalistas muy distintos", habit:5,
+  text:"Quedan dos candidatas. Una brilló en la entrevista. La otra tuvo mejores pruebas técnicas pero fue más reservada.",
+  opts:[
+   {t:"Hacer entrevista por competencias, verificar referencias y comparar con las pruebas.", d:[4,8,-2,6], s:3, f:"Decides con evidencia y no por impresión. Entender a fondo a cada candidata es la base de una buena selección."},
+   {t:"Elegir a quien te cayó mejor; la química es lo que importa.", d:[0,-6,0,-2], s:1, f:"La primera impresión engaña con frecuencia. Sin evidencia, aumenta el riesgo de contratar a la persona equivocada."},
+   {t:"Pedirles prueba de embarazo y preguntar si planean tener hijos.", d:[-10,0,0,-18], s:0, f:"Es una práctica discriminatoria. La normativa colombiana prohíbe exigir prueba de embarazo como requisito de ingreso, salvo casos excepcionales previstos por la ley."}
+  ]},
+ {area:"Inducción", title:"Los nuevos se van en tres meses", habit:6,
+  text:"El 40% de quienes ingresan renuncia antes de cumplir tres meses. Dicen que se sienten perdidos y sin apoyo.",
+  opts:[
+   {t:"Crear un programa de inducción con mentor y seguimiento a los 30, 60 y 90 días.", d:[10,8,4,4], s:3, f:"Un mentor conecta al nuevo con el equipo. La rotación baja y ahorras costos de reemplazo. La inducción en seguridad y salud en el trabajo además es obligatoria."},
+   {t:"Enviar por correo el manual del empleado en PDF.", d:[-2,-2,1,0], s:1, f:"Cumple lo mínimo, pero nadie aprende la cultura de una empresa leyendo un PDF solo."},
+   {t:"Que aprendan en la cancha; así nos formamos todos.", d:[-8,-6,-3,-4], s:0, f:"Sin inducción aumentan errores, accidentes y renuncias. Omitir la inducción en seguridad y salud en el trabajo es un incumplimiento del empleador."}
+  ]},
+ {area:"Evaluación del desempeño", title:"Llegó la evaluación anual", habit:5,
+  text:"Nunca se ha evaluado formalmente el desempeño. La gerencia quiere saber quién aporta y quién no.",
+  opts:[
+   {t:"Evaluar por objetivos con retroalimentación cara a cara y plan de desarrollo.", d:[8,10,0,2], s:3, f:"La evaluación se vuelve una conversación para crecer, no un castigo. Cada persona sabe qué mejorar y cómo."},
+   {t:"Hacer un ranking y despedir al 10% con peores resultados.", d:[-14,2,-6,-6], s:0, f:"Genera miedo, competencia interna y costos de indemnización. Además, despedir sin un proceso claro trae riesgos legales."},
+   {t:"No evaluar para evitar conflictos con el personal.", d:[-4,-8,1,0], s:1, f:"Evitar el conflicto deja sin reconocimiento a quien trabaja bien y sin dirección a quien necesita mejorar."}
+  ]},
+ {area:"Compensación", title:"La competencia ofrece mejores sueldos", habit:4,
+  text:"Un competidor está contratando a tus vendedores con salarios más altos. El presupuesto para ajustes es limitado.",
+  opts:[
+   {t:"Dar el mismo aumento a todos, aunque se agote el presupuesto.", d:[6,2,-14,0], s:1, f:"Alivia el clima por un tiempo, pero no premia el desempeño y deja a la empresa sin margen para otras necesidades."},
+   {t:"Revisar la equidad interna y combinar salario emocional con un variable por metas.", d:[8,8,-4,2], s:3, f:"Ganan las personas y gana la empresa: se reconoce el aporte, se cuidan los costos y se ofrecen beneficios valorados como flexibilidad y formación."},
+   {t:"No hacer nada: el que se quiera ir, que se vaya.", d:[-12,-8,5,0], s:0, f:"Ahorras hoy, pero pierdes talento clave y pagas más después en selección, inducción y ventas perdidas."}
+  ]},
+ {area:"Relaciones laborales", title:"Choque entre supervisores de bodega", habit:5,
+  text:"Dos supervisores de bodega no se hablan y se culpan mutuamente por los despachos atrasados. El equipo ya tomó partido.",
+  opts:[
+   {t:"Mediar: escuchar a cada uno, buscar la causa y dejar acuerdos por escrito.", d:[12,6,0,3], s:3, f:"Escuchar para comprender, no para responder, permite encontrar la causa real y llegar a acuerdos que se cumplen."},
+   {t:"Sancionar a ambos de inmediato para dar ejemplo.", d:[-8,-2,0,-6], s:0, f:"Sancionar sin escuchar descargos viola el debido proceso y no resuelve el problema de fondo."},
+   {t:"Ignorarlo; ya se les pasará.", d:[-8,-8,0,-2], s:1, f:"Los conflictos ignorados crecen. El clima y los despachos siguen empeorando."}
+  ]},
+ {area:"Capacitación", title:"Llega un nuevo sistema CRM", habit:7,
+  text:"La empresa compró un CRM para el área comercial. Muchos vendedores no lo dominan y las ventas registradas bajaron.",
+  opts:[
+   {t:"Diagnosticar necesidades y capacitar por niveles dentro de la jornada, con seguimiento.", d:[6,12,-4,2], s:3, f:"Afilar la sierra: invertir en las personas renueva su capacidad. La formación ajustada a cada nivel se aplica de verdad."},
+   {t:"Hacer un curso obligatorio un sábado, sin reconocimiento.", d:[-10,2,1,-8], s:0, f:"Genera rechazo. Una capacitación obligatoria fuera de la jornada puede generar obligaciones laborales; conviene revisarlo con el área jurídica."},
+   {t:"Reemplazar a quienes no lo manejen por personal nuevo.", d:[-12,-4,-10,-4], s:0, f:"Pierdes conocimiento del cliente y pagas despidos, selección e inducción. Es la opción más costosa."}
+  ]},
+ {area:"Desvinculación", title:"Un bajo desempeño persistente", habit:1,
+  text:"Un auxiliar lleva seis meses incumpliendo sus metas pese a llamados de atención verbales.",
+  opts:[
+   {t:"Despedirlo hoy mismo por WhatsApp.", d:[-10,0,-6,-12], s:0, f:"Es irrespetuoso y riesgoso: sin documentación ni debido proceso, la empresa queda expuesta a reclamaciones."},
+   {t:"Documentar, acordar un plan de mejora, escuchar descargos y decidir según la ley y el reglamento interno.", d:[4,4,2,10], s:3, f:"Actúas con principios y no por impulso. Das una oportunidad real y, si no mejora, la decisión queda bien soportada."},
+   {t:"Presionarlo con cargas y comentarios para que renuncie.", d:[-14,-4,1,-16], s:0, f:"Puede configurar acoso laboral (Ley 1010 de 2006). Daña el clima de todo el equipo y expone a la empresa."}
+  ]}
+];
+const EVENTS = {
+  4:{title:"Evento sorpresa: visita de inspección laboral", check:"legal", min:60,
+     good:{d:[0,4,0,4], t:"Tus prácticas están en orden. La inspección termina sin hallazgos y el equipo trabaja tranquilo."},
+     bad:{d:[-4,0,-10,-4], t:"La inspección encuentra fallas en tus procesos. Debes destinar recursos a corregirlas."}},
+  6:{title:"Evento sorpresa: temporada alta de fin de año", check:"clima", min:60,
+     good:{d:[2,8,4,0], t:"Con buen clima laboral, el equipo responde al pico de pedidos y se cumplen los despachos."},
+     bad:{d:[-4,-8,-4,0], t:"Con el clima deteriorado aumentan las incapacidades y los retrasos justo en el mes de más ventas."}}
+};
+
+/* ---------------- Estado ---------------- */
+let S = freshState(null);
+function freshState(student){ return {student:student||null, screen:"login", step:0, ind:{clima:55,prod:55,fin:55,legal:55}, stars:0, picks:[], order:[], answered:false, pendingEvent:false, result:null}; }
+const $ = id => document.getElementById(id);
+const clamp = v => Math.max(0, Math.min(100, v));
+const shuffle = a => { a=a.slice(); for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];} return a; };
+
+/* ---------------- Pantallas ---------------- */
+function show(name){
+  S.screen = name;
+  if(["brief","play","result"].includes(name)) S.simAt = name;
+  ["sLogin","sHub","sTaller","sBrief","sPlay","sResult","sTeacher"].forEach(id=>$(id).hidden = true);
+  $({login:"sLogin",hub:"sHub",taller:"sTaller",brief:"sBrief",play:"sPlay",result:"sResult",teacher:"sTeacher"}[name]).hidden = false;
+}
+function meterColor(v){ return v>=65?"var(--good)":v>=40?"var(--warn)":"var(--bad)"; }
+function renderMeters(el){
+  el.innerHTML = IND.map(i=>{const v=Math.round(S.ind[i.k]);return `<div class="meter"><div class="meter-top"><span>${i.n}</span><span class="mono">${v}</span></div><div class="bar"><i style="width:${v}%;background:${meterColor(v)}"></i></div></div>`;}).join("");
+}
+function starStr(n,max){ return "★".repeat(n)+"☆".repeat(Math.max(0,max-n)); }
+function updateHud(){
+  $("hudStarsN").textContent = S.stars+"/24";
+  $("hudStars").textContent = "★";
+  if(S.screen==="play") $("hudStep").textContent = `Decisión ${S.step+1}/8 · ${CASES[S.step].area}`;
+  else if(S.screen==="result") $("hudStep").textContent = "Recorrido completado";
+  else if(S.screen==="taller") $("hudStep").textContent = T.cur ? `Taller · Hábito ${T.cur}/7` : "Taller · Resumen";
+  else if(S.screen==="hub") $("hudStep").textContent = "Menú principal";
+  else if(S.screen==="teacher") $("hudStep").textContent = "Panel docente";
+  else $("hudStep").textContent = "Oficina · vista general";
+}
+function esc(s){ return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+
+/* Ingreso */
+$("loginForm").addEventListener("submit", e=>{
+  e.preventDefault();
+  const name = $("fName").value.trim().replace(/\s+/g," ");
+  const ced = $("fId").value.trim();
+  const group = $("fGroup").value.trim();
+  let ok = true;
+  const eN=$("eName"), eI=$("eId");
+  eN.hidden = eI.hidden = true;
+  if(name.split(" ").length<2 || !/^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ' .-]+$/.test(name)){ eN.textContent="Escribe al menos un nombre y un apellido, solo con letras."; eN.hidden=false; ok=false; }
+  if(!/^\d{5,11}$/.test(ced)){ eI.textContent="La cédula debe tener entre 5 y 11 dígitos, sin puntos ni espacios."; eI.hidden=false; ok=false; }
+  if(!ok) return;
+  S.student = {name, ced, group};
+  $("who").innerHTML = `<b>${esc(name)}</b><br>C.C. <span class="mono">${esc(ced)}</span>`;
+  $("who").hidden = false;
+  $("briefTitle").textContent = `Bienvenido(a), ${name.split(" ")[0]}`;
+  $("hubTitle").textContent = `Hola, ${name.split(" ")[0]}. ¿Qué vas a trabajar hoy?`;
+  $("menuBtn").hidden = false;
+  loadDraft(ced);
+  goHub();
+});
+$("fId").addEventListener("input", e=>{ e.target.value = e.target.value.replace(/\D/g,""); });
+$("startBtn").addEventListener("click", ()=>{ S.step=0; renderCase(); show("play"); updateHud(); });
+
+/* Decisiones */
+function renderCase(){
+  const c = CASES[S.step];
+  S.answered = false;
+  if(!S.order[S.step]) S.order[S.step] = shuffle([0,1,2]);
+  renderMeters($("meters"));
+  $("caseBox").innerHTML = `<span class="area">${esc(c.area)} · ${S.step+1} de 8</span><h2>${esc(c.title)}</h2><p>${esc(c.text)}</p>`;
+  $("options").innerHTML = S.order[S.step].map((oi,pos)=>`<button class="opt" data-oi="${oi}"><span class="k">${"ABC"[pos]}</span><span>${esc(c.opts[oi].t)}</span></button>`).join("");
+  $("fbBox").innerHTML = "";
+  $("options").querySelectorAll(".opt").forEach(b=>b.addEventListener("click",()=>choose(+b.dataset.oi, b)));
+  scene.focus(S.step);
+  updateHud();
+}
+function applyDelta(d){ IND.forEach((i,ix)=>{ S.ind[i.k] = clamp(S.ind[i.k]+d[ix]); }); }
+function deltaChips(d){ return d.map((v,ix)=>`<span class="delta ${v>0?"up":v<0?"down":"zero"}">${v>0?"+":""}${v} ${IND[ix].n}</span>`).join(""); }
+function choose(oi, btn){
+  if(S.answered) return;
+  S.answered = true;
+  const c = CASES[S.step], o = c.opts[oi];
+  applyDelta(o.d);
+  S.stars += o.s;
+  const pos = S.order[S.step].indexOf(oi);
+  S.picks[S.step] = {oi, s:o.s, letter:"ABC"[pos]};
+  $("options").querySelectorAll(".opt").forEach(b=>{ b.disabled = true; if(b===btn) b.classList.add("chosen"); else b.classList.add("dim"); });
+  const head = o.s===3?"Excelente decisión":o.s===1?"Decisión discutible":"Decisión riesgosa";
+  const habitLine = o.s===3 ? `<p class="habit">Conexión con los 7 hábitos: <b>${HAB[c.habit]}</b></p>` : `<p class="habit">Pista: la mejor práctica aquí se relaciona con <b>${HAB[c.habit]}</b>.</p>`;
+  const last = S.step===CASES.length-1;
+  $("fbBox").innerHTML = `<div class="feedback s${o.s}"><div class="fb-head"><h3>${head}</h3><span class="stars" aria-label="${o.s} estrellas">${starStr(o.s,3)}</span></div><div class="deltas">${deltaChips(o.d)}</div><p>${esc(o.f)}</p>${habitLine}<div class="row"><button class="btn" id="nextBtn">${last?"Ver mi resultado":"Siguiente decisión"}</button></div></div>`;
+  renderMeters($("meters"));
+  scene.outcome(S.step, o.s);
+  updateHud();
+  $("nextBtn").addEventListener("click", next);
+  $("nextBtn").focus({preventScroll:true});
+  $("fbBox").scrollIntoView({block:"nearest", behavior:"smooth"});
+}
+function next(){
+  const done = S.step+1;
+  const ev = EVENTS[done];
+  if(ev && !S.pendingEvent){ S.pendingEvent = true; return showEvent(ev); }
+  S.pendingEvent = false;
+  if(done>=CASES.length) return finish();
+  S.step = done; renderCase();
+  $("panel").scrollIntoView({block:"start", behavior:"smooth"});
+}
+function showEvent(ev){
+  const passed = S.ind[ev.check] >= ev.min;
+  const r = passed?ev.good:ev.bad;
+  applyDelta(r.d);
+  renderMeters($("meters"));
+  const indName = IND.find(i=>i.k===ev.check).n;
+  $("fbBox").innerHTML = `<div class="feedback event"><div class="fb-head"><h3>${esc(ev.title)}</h3><span class="chip">${indName} ${passed?"≥":"<"} ${ev.min}</span></div><div class="deltas">${deltaChips(r.d)}</div><p>${esc(r.t)}</p><div class="row"><button class="btn" id="nextBtn">Continuar</button></div></div>`;
+  scene.event(passed);
+  $("nextBtn").addEventListener("click", next);
+  $("nextBtn").focus({preventScroll:true});
+}
+
+/* Resultado */
+function fnv(str){ let h=0x811c9dc5; for(let i=0;i<str.length;i++){ h^=str.charCodeAt(i); h=Math.imul(h,0x01000193)>>>0; } return h.toString(36).toUpperCase().padStart(7,"0").slice(-6); }
+function finish(){
+  const avg = IND.reduce((a,i)=>a+S.ind[i.k],0)/4;
+  const score = Math.round(0.6*avg + 0.4*(S.stars/24*100));
+  const nota = Math.round((1 + 4*score/100)*10)/10;
+  let perfil, txt;
+  if(score>=85){perfil="Estratega del talento";txt="Decides con visión, evidencia y respeto por las personas y la ley.";}
+  else if(score>=70){perfil="Gestor(a) en crecimiento";txt="Vas por buen camino; revisa las decisiones con menos estrellas.";}
+  else if(score>=50){perfil="Administrador(a) reactivo(a)";txt="Resuelves lo urgente, pero varias decisiones generaron costos ocultos.";}
+  else {perfil="Apagaincendios";txt="Tus decisiones afectaron a las personas y a la empresa. Repasa la retroalimentación e inténtalo de nuevo.";}
+  const ts = new Date();
+  const code = fnv(`${S.student.ced}|${score}|${S.picks.map(p=>p.oi).join("")}|${ts.getTime()}`);
+  S.result = {score, nota, perfil, txt, code, ts:ts.toISOString()};
+  renderResult();
+  show("result"); updateHud(); scene.finale(score);
+  saveResult();
+}
+function fmtNota(n){ return n.toFixed(1).replace(".",","); }
+function fmtDate(iso){ try{ return new Date(iso).toLocaleString("es-CO",{dateStyle:"medium",timeStyle:"short"}); }catch(e){ return iso; } }
+function ticketText(){
+  const r=S.result, st=S.student;
+  return `Talento en Juego · Comprobante
+Estudiante: ${st.name}
+Cédula: ${st.ced}${st.group?`\nGrupo: ${st.group}`:""}
+Puntaje: ${r.score}/100 · Nota: ${fmtNota(r.nota)}
+Perfil: ${r.perfil}
+Estrellas: ${S.stars}/24
+Indicadores: Clima ${Math.round(S.ind.clima)} · Productividad ${Math.round(S.ind.prod)} · Finanzas ${Math.round(S.ind.fin)} · Legal ${Math.round(S.ind.legal)}
+Código: ${r.code}
+Fecha: ${fmtDate(r.ts)}`;
+}
+function renderResult(){
+  const r=S.result;
+  $("dial").style.setProperty("--p", r.score);
+  $("scoreN").textContent = r.score;
+  $("notaN").innerHTML = `${fmtNota(r.nota)} <small>nota sobre 5,0</small>`;
+  $("perfil").textContent = r.perfil;
+  $("perfilTxt").textContent = r.txt;
+  renderMeters($("metersEnd"));
+  $("recap").innerHTML = CASES.map((c,i)=>{const p=S.picks[i]; return `<li><span>${esc(c.area)}: ${esc(c.title)}<small>Elegiste la opción ${p.letter} · ${esc(HAB[c.habit])}</small></span><span class="stars">${starStr(p.s,3)}</span></li>`;}).join("");
+  $("ticket").textContent = ticketText();
+}
+
+/* ---------------- Capacidades (guardar y panel docente) ---------------- */
+let DB=null, USER=null, DL=null, capsReady=false;
+(async function caps(){
+  try{
+    const c = window.claude;
+    if(!c || !c.use){
+      DL = {save: async ({filename, data})=>{ const u=URL.createObjectURL(data); const a=document.createElement("a"); a.href=u; a.download=filename; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(u), 1500); }};
+      capsReady = true; $("dlBtn").hidden = false;
+      if(S.screen==="result" && S.result) saveResult();
+      return;
+    }
+    [DB, USER, DL] = await Promise.all([c.use("db").catch(()=>null), c.use("user").catch(()=>null), c.use("downloads").catch(()=>null)]);
+    capsReady = true;
+    if(DL) $("dlBtn").hidden = false;
+    if(USER && await USER.isOwner().catch(()=>false)) $("teacherBtn").hidden = false;
+    if(S.screen==="result" && S.result && !S.result.saved) saveResult();
+  }catch(e){}
+})();
+async function saveResult(){
+  const note = $("saveNote");
+  note.className = "note";
+  if(!DB || !USER){
+    note.textContent = capsReady ? "Copia o descarga este comprobante y envíaselo a tu docente: es la constancia de tu resultado." : "Guardando resultado…";
+    if(!capsReady) setTimeout(()=>{ if(!capsReady && S.result && !S.result.saved){ note.className="note bad"; note.textContent="No fue posible guardar en línea. Copia o descarga el comprobante y envíaselo a tu docente."; } }, 11000);
+    return;
+  }
+  try{
+    const uid = await USER.id();
+    if(!uid) throw new Error("sin id");
+    const ref = DB.doc("resultados/"+uid);
+    let attempts = 1, best = S.result.score;
+    try{ const prev = await ref.get(); if(prev.exists){ const d=prev.data(); attempts=(d.intentos||0)+1; best=Math.max(best, d.mejorPuntaje||0); } }catch(e){}
+    await ref.set({nombre:S.student.name, cedula:S.student.ced, grupo:S.student.group||"", puntaje:S.result.score, nota:S.result.nota, perfil:S.result.perfil, estrellas:S.stars,
+      clima:Math.round(S.ind.clima), productividad:Math.round(S.ind.prod), finanzas:Math.round(S.ind.fin), legal:Math.round(S.ind.legal),
+      decisiones:S.picks.map(p=>p.oi), codigo:S.result.code, fecha:S.result.ts, intentos:attempts, mejorPuntaje:best});
+    S.result.saved = true;
+    note.className = "note ok"; note.textContent = "Resultado guardado. Tu docente ya puede verlo. Conserva también el comprobante.";
+  }catch(e){
+    note.className = "note bad"; note.textContent = "No fue posible guardar en línea desde esta cuenta. Copia o descarga el comprobante y envíaselo a tu docente.";
+  }
+}
+async function copyText(txt, btn, elId){
+  const old = btn.textContent;
+  try{ await navigator.clipboard.writeText(txt); btn.textContent="Copiado"; }
+  catch(e){ const r=document.createRange(); r.selectNodeContents($(elId||"ticket")); const s=getSelection(); s.removeAllRanges(); s.addRange(r); btn.textContent="Texto seleccionado: cópialo"; }
+  setTimeout(()=>btn.textContent=old, 2200);
+}
+$("copyBtn").addEventListener("click", e=>copyText(ticketText(), e.currentTarget));
+$("dlBtn").addEventListener("click", async ()=>{
+  if(!DL) return;
+  const safe = S.student.name.normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[^A-Za-z0-9]+/g,"_");
+  try{ await DL.save({filename:`comprobante_${safe}.txt`, data:new Blob([ticketText()],{type:"text/plain"})}); }catch(e){}
+});
+$("againBtn").addEventListener("click", ()=>{
+  S = freshState(S.student);
+  renderMeters($("metersBrief")); show("brief"); updateHud(); scene.reset();
+});
+
+/* Panel docente */
+let lastScreen = "hub", rows = [], wRows = [], nRows = [], tTab = "notas";
+$("teacherBtn").addEventListener("click", ()=>{
+  if(S.screen!=="teacher") lastScreen = S.screen==="login" ? "login" : S.screen;
+  stopTimer(); show("teacher"); updateHud(); loadTeacher();
+});
+document.querySelectorAll("[data-ttab]").forEach(b=>b.addEventListener("click",()=>{
+  tTab = b.dataset.ttab;
+  document.querySelectorAll("[data-ttab]").forEach(x=>x.setAttribute("aria-pressed", String(x===b)));
+  loadTeacher();
+}));
+async function loadTeacher(){
+  $("tNote").textContent = "Cargando…"; $("tWrap").hidden = true; $("tDetail").hidden = true;
+  $("csvBtn").hidden = $("csvCopy").hidden = true;
+  if(!DB){ $("tNote").textContent = "La base de resultados no está disponible en esta vista."; return; }
+  if(tTab==="notas") return loadNotas();
+  try{
+    if(tTab==="sim"){
+      const snap = await DB.collection("resultados").get();
+      rows = snap.docs.map(d=>d.data()).filter(Boolean).sort((a,b)=>String(a.nombre).localeCompare(String(b.nombre),"es"));
+      if(!rows.length){ $("tNote").textContent = "Aún no hay resultados del simulador. Aparecerán aquí cuando los estudiantes terminen el recorrido."; return; }
+      $("tHead").innerHTML = "<tr><th>Estudiante</th><th>Cédula</th><th>Grupo</th><th>Puntaje</th><th>Nota</th><th>Intentos</th><th>Código</th><th>Fecha</th></tr>";
+      $("tBody").innerHTML = rows.map(r=>`<tr><td>${esc(r.nombre)}</td><td class="num">${esc(r.cedula)}</td><td>${esc(r.grupo||"")}</td><td class="num">${esc(r.puntaje)}</td><td class="num">${fmtNota(+r.nota||0)}</td><td class="num">${esc(r.intentos||1)}</td><td class="num">${esc(r.codigo)}</td><td>${esc(fmtDate(r.fecha))}</td></tr>`).join("");
+      $("tNote").textContent = `${rows.length} estudiante(s). Se muestra el último intento de cada uno; la columna Intentos indica cuántas veces jugó.`;
+    } else {
+      const snap = await DB.collection("talleres").get();
+      wRows = snap.docs.map(d=>d.data()).filter(Boolean).sort((a,b)=>String(a.nombre).localeCompare(String(b.nombre),"es"));
+      if(!wRows.length){ $("tNote").textContent = "Aún no hay avances del taller. Aparecerán aquí cuando los estudiantes guarden su primer hábito."; return; }
+      $("tHead").innerHTML = "<tr><th>Estudiante</th><th>Cédula</th><th>Grupo</th><th>Hábitos</th><th>Última actualización</th><th></th></tr>";
+      $("tBody").innerHTML = wRows.map((r,i)=>`<tr><td>${esc(r.nombre)}</td><td class="num">${esc(r.cedula)}</td><td>${esc(r.grupo||"")}</td><td class="num">${esc(r.completados||0)}/7</td><td>${esc(fmtDate(r.fecha))}</td><td><button class="btn-line" type="button" data-view="${i}" style="padding:5px 12px">Ver respuestas</button></td></tr>`).join("");
+      $("tNote").textContent = `${wRows.length} estudiante(s) con avance en el taller.`;
+    }
+    $("tWrap").hidden = false; $("csvCopy").hidden = false; if(DL) $("csvBtn").hidden = false;
+  }catch(e){ $("tNote").textContent = "No fue posible cargar los resultados. Intenta de nuevo en un momento."; }
+}
+/* Notas consolidadas */
+function tallerScore(t){ const per=[1,2,3,4,5,6,7].map(i=>REQ[i].filter(r=>r[1](t)).length/REQ[i].length); return Math.round(per.reduce((a,b)=>a+b,0)/7*100); }
+const toNota = sc => Math.round((1 + 4*sc/100)*10)/10;
+function finalOf(r){
+  if(r.ajuste!=null) return {n:r.ajuste, how:"Ajustada"};
+  if(r.sim!=null && r.tal!=null) return {n:Math.round((r.sim+r.tal)/2*10)/10, how:"Promedio"};
+  return {n:null, how: r.sim==null ? "Falta simulador" : "Falta taller"};
+}
+function notaPill(n){ return n==null ? '<span class="pill">—</span>' : `<span class="pill ${n>=3?"ok":"low"}">${fmtNota(n)}</span>`; }
+async function loadNotas(){
+  const get = async c => { try{ const sn = await DB.collection(c).get(); return sn.docs.map(d=>d.data()).filter(Boolean); }catch(e){ return null; } };
+  const getAdj = async () => { try{ const sn = await DB.collection("notas").get(); return sn.docs.filter(d=>d.exists).map(d=>({id:d.id, ...d.data()})); }catch(e){ return []; } };
+  const [sim, tal, adj] = await Promise.all([get("resultados"), get("talleres"), getAdj()]);
+  if(sim===null && tal===null){ $("tNote").textContent = "No fue posible cargar las notas. Intenta de nuevo en un momento."; return; }
+  const map = new Map();
+  const row = d => { const k=String(d.cedula||""); if(!map.has(k)) map.set(k,{ced:k, nombre:d.nombre, grupo:d.grupo||"", sim:null, simPts:null, tal:null, talPts:null, done:0, ajuste:null}); const r=map.get(k); if(d.nombre) r.nombre=d.nombre; if(d.grupo) r.grupo=d.grupo; return r; };
+  (sim||[]).forEach(d=>{ const r=row(d); r.sim=+d.nota||null; r.simPts=d.puntaje; });
+  (tal||[]).forEach(d=>{ const r=row(d); const t=mergeT(d); const sc=tallerScore(t); r.talPts=sc; r.tal=toNota(sc); r.done=[1,2,3,4,5,6,7].filter(i=>REQ[i].every(q=>q[1](t))).length; });
+  adj.forEach(a=>{ if(map.has(a.id) && typeof a.nota==="number") map.get(a.id).ajuste=a.nota; });
+  nRows = [...map.values()].sort((a,b)=>String(a.nombre).localeCompare(String(b.nombre),"es"));
+  if(!nRows.length){ $("tNote").textContent = "Aún no hay estudiantes con actividades guardadas. Sus notas aparecerán aquí cuando terminen el simulador o guarden el taller."; return; }
+  $("tHead").innerHTML = "<tr><th>Estudiante</th><th>Cédula</th><th>Grupo</th><th>Simulador</th><th>Taller</th><th>Nota final</th><th>Ajuste docente</th></tr>";
+  $("tBody").innerHTML = nRows.map((r,i)=>{ const f=finalOf(r); return `<tr><td>${esc(r.nombre)}</td><td class="num">${esc(r.ced)}</td><td>${esc(r.grupo)}</td>
+    <td>${notaPill(r.sim)} <span class="note mono">${r.simPts!=null?esc(r.simPts)+"/100":""}</span></td>
+    <td>${notaPill(r.tal)} <span class="note mono">${r.tal!=null?r.done+"/7 háb.":""}</span></td>
+    <td class="final" id="fin${i}">${notaPill(f.n)} <span class="note">${f.how}</span></td>
+    <td><input class="w-input mono adj" type="number" min="1" max="5" step="0.1" inputmode="decimal" data-adj="${i}" value="${r.ajuste!=null?r.ajuste:""}" aria-label="Nota ajustada para ${esc(r.nombre)}" placeholder="—"></td></tr>`; }).join("");
+  const conAmbas = nRows.filter(r=>finalOf(r).n!=null), prom = conAmbas.length ? conAmbas.reduce((a,r)=>a+finalOf(r).n,0)/conAmbas.length : null;
+  $("tNote").innerHTML = `${nRows.length} estudiante(s)${prom!=null?` · promedio de nota final: <b>${fmtNota(Math.round(prom*10)/10)}</b>`:""}. La nota final es el promedio simple del simulador y del taller. La nota del taller se calcula por la proporción de requisitos cumplidos en los 7 hábitos (1,0 a 5,0). Si escribes un ajuste docente, reemplaza la nota final.`;
+  $("tWrap").hidden = false; $("csvCopy").hidden = false; if(DL) $("csvBtn").hidden = false;
+}
+$("tBody").addEventListener("change", async e=>{
+  const el = e.target.closest("[data-adj]"); if(!el) return;
+  const r = nRows[+el.dataset.adj]; if(!r) return;
+  const raw = String(el.value).replace(",",".").trim();
+  const n = raw==="" ? null : Math.round(parseFloat(raw)*10)/10;
+  if(n!==null && !(n>=1 && n<=5)){ el.value = r.ajuste!=null ? r.ajuste : ""; $("tNote").textContent = "La nota ajustada debe estar entre 1,0 y 5,0. Déjala vacía para usar el promedio."; return; }
+  try{
+    const ref = DB.doc("notas/"+r.ced);
+    if(n===null) await ref.delete(); else await ref.set({nota:n, nombre:r.nombre, fecha:new Date().toISOString()});
+    r.ajuste = n;
+    const f = finalOf(r); $("fin"+el.dataset.adj).innerHTML = `${notaPill(f.n)} <span class="note">${f.how}</span>`;
+  }catch(err){ el.value = r.ajuste!=null ? r.ajuste : ""; $("tNote").textContent = "No fue posible guardar el ajuste. Intenta de nuevo."; }
+});
+function csvNotas(){
+  const head = ["Nombre","Cedula","Grupo","Nota simulador","Puntaje simulador","Nota taller","Habitos completos","Ajuste docente","Nota final","Criterio"];
+  const f1 = n => n==null ? "" : String(n).replace(".",",");
+  return [head.join(";")].concat(nRows.map(r=>{ const f=finalOf(r); return [r.nombre,r.ced,r.grupo,f1(r.sim),r.simPts??"",f1(r.tal),r.tal!=null?r.done:"",f1(r.ajuste),f1(f.n),f.how].map(csvQ).join(";"); })).join("\n");
+}
+$("tBody").addEventListener("click", e=>{
+  const b = e.target.closest("[data-view]"); if(!b) return;
+  const r = wRows[+b.dataset.view]; if(!r) return;
+  $("tDetailT").textContent = `Respuestas de ${r.nombre}`;
+  $("tDetailBody").textContent = tallerText({name:r.nombre, ced:r.cedula, group:r.grupo}, mergeT(r), r.fecha);
+  $("tDetail").hidden = false;
+  $("tDetail").scrollIntoView({block:"nearest", behavior:"smooth"});
+});
+$("closeTeacher").addEventListener("click", ()=>{
+  if(lastScreen==="taller"){ show("taller"); T.cur ? renderTaller() : renderSummary(); }
+  else if(lastScreen==="hub"){ goHub(); return; }
+  else show(lastScreen);
+  updateHud();
+});
+const csvQ = v => `"${String(v??"").replace(/"/g,'""').replace(/\n/g," / ")}"`;
+function csvSim(){
+  const head = ["Nombre","Cedula","Grupo","Puntaje","Nota","Perfil","Estrellas","Clima","Productividad","Finanzas","Legal","Intentos","Mejor puntaje","Codigo","Fecha"];
+  return [head.join(";")].concat(rows.map(r=>[r.nombre,r.cedula,r.grupo,r.puntaje,String(r.nota).replace(".",","),r.perfil,r.estrellas,r.clima,r.productividad,r.finanzas,r.legal,r.intentos,r.mejorPuntaje,r.codigo,fmtDate(r.fecha)].map(csvQ).join(";"))).join("\n");
+}
+function csvTaller(){
+  const head = ["Nombre","Cedula","Grupo","Habitos completos","H1 Influencia","H1 Preocupacion","H1 Reformulaciones","H2 Mision","H3 Horas I","H3 Horas II","H3 Horas III","H3 Horas IV","H3 Agendado","H4 Companero","H4 Tipo de acuerdo","H4 Solucion","H5 Companero","H5 Parafrasis","H5 Reflexion","H6 Problema","H6 Tercera alternativa","H7 Fisica","H7 Mental","H7 Social","H7 Espiritual","H7 Acciones","Fecha"];
+  return [head.join(";")].concat(wRows.map(r=>{ const t = mergeT(r); const q = qHours(t);
+    return [r.nombre,r.cedula,r.grupo,r.completados||0,
+      t.h1.concerns.filter(c=>c.inf).map(c=>c.t).join(", "), t.h1.concerns.filter(c=>!c.inf).map(c=>c.t).join(", "), t.h1.reframes.join(" | "),
+      t.h2.mision, q[1],q[2],q[3],q[4], t.h3.plan.map(p=>`${p.t} (${p.dia})`).join(" | "),
+      t.h4.socio, TIPOS[t.h4.tipo]||"", t.h4.solucion, t.h5.companero, t.h5.parafrasis, `${t.h5.sentirHablar} | ${t.h5.sentirEscuchar}`,
+      t.h6.problema, t.h6.tercera, t.h7.fis, t.h7.men, t.h7.soc, t.h7.esp, DIMS.map(d=>`${d[1]}: ${t.h7.acc[d[0]]}`).join(" | "), fmtDate(r.fecha)].map(csvQ).join(";"); })).join("\n");
+}
+$("csvBtn").addEventListener("click", async ()=>{
+  const f = tTab==="sim" ? ["resultados_simulador.csv", csvSim] : tTab==="taller" ? ["respuestas_taller_7_habitos.csv", csvTaller] : ["notas_estudiantes.csv", csvNotas];
+  try{ await DL.save({filename:f[0], data:new Blob(["\ufeff"+f[1]()],{type:"text/csv"})}); }catch(e){}
+});
+$("csvCopy").addEventListener("click", async e=>{ const b=e.currentTarget; try{ await navigator.clipboard.writeText(tTab==="sim"?csvSim():tTab==="taller"?csvTaller():csvNotas()); b.textContent="CSV copiado"; }catch(err){ b.textContent="No se pudo copiar"; } setTimeout(()=>b.textContent="Copiar CSV",2200); });
+
+/* ---------------- Menú ---------------- */
+function renderHub(){
+  $("hubProg").textContent = `${countDone()} de 7 hábitos completos`;
+  $("hubSim").textContent = S.result ? `Último resultado: ${S.result.score}/100 · nota ${fmtNota(S.result.nota)}` : (S.picks.length ? `En curso: decisión ${Math.min(S.step+1,8)} de 8` : "8 decisiones · puntaje y nota");
+}
+function goHub(){ stopTimer(); renderHub(); show("hub"); updateHud(); scene.tour(); }
+$("menuBtn").addEventListener("click", goHub);
+$("goSim").addEventListener("click", ()=>{
+  const at = S.simAt || "brief";
+  if(at==="brief") renderMeters($("metersBrief"));
+  show(at); updateHud();
+  if(at==="play") scene.focus(S.step); else if(at==="result" && S.result) scene.finale(S.result.score); else scene.overview();
+});
+$("goTaller").addEventListener("click", ()=>{ show("taller"); if(T.cur) renderTaller(); else renderSummary(); scene.tour(); });
+
+/* ---------------- Taller de los 7 hábitos ---------------- */
+const HABITS = {
+ 1:{t:"Ser proactivo", act:"Ubica tus preocupaciones en dos círculos y cambia el lenguaje reactivo por lenguaje proactivo."},
+ 2:{t:"Empezar con un fin en mente", act:"Imagina tu fiesta de 80 años y, con eso, escribe un borrador de tu misión personal."},
+ 3:{t:"Poner primero lo primero", act:"Llena la matriz del tiempo con lo que hiciste ayer y agenda dos actividades importantes no urgentes."},
+ 4:{t:"Pensar ganar-ganar", act:"Negocia en pareja cómo repartir un recurso limitado y compara un resultado ganar-perder con una solución creativa."},
+ 5:{t:"Buscar primero entender", act:"En pareja, uno cuenta un problema durante 2 minutos y el otro solo parafrasea, sin aconsejar. Luego cambian de rol."},
+ 6:{t:"Sinergizar", act:"En grupo, partan de ideas individuales y combínenlas hasta llegar a una tercera alternativa que nadie traía."},
+ 7:{t:"Afilar la sierra", act:"Califícate de 1 a 10 en cuatro dimensiones y elige una acción pequeña para cada una la próxima semana."}
+};
+const REFRAMES = ["No puedo estudiar porque trabajo todo el día.","Me toca hacer este trabajo con gente que no conozco.","El profesor me tiene entre ojos, por eso me va mal.","Así soy yo, no puedo cambiar."];
+const QUADS = {1:"I · Urgente e importante",2:"II · Importante, no urgente",3:"III · Urgente, no importante",4:"IV · Ni urgente ni importante"};
+const DIAS = ["Lunes","Martes","Miércoles","Jueves","Viernes","Sábado","Domingo"];
+const TIPOS = {gg:"Ganar-ganar", gp:"Ganar-perder", pg:"Perder-ganar", nt:"No hay trato"};
+const DIMS = [["fis","Física","Ej.: caminar 20 minutos tres días"],["men","Mental","Ej.: leer 10 páginas al día"],["soc","Social / emocional","Ej.: llamar a un amigo que no veo"],["esp","Espiritual (valores y sentido)","Ej.: 10 minutos de reflexión el domingo"]];
+function freshTaller(){ return {h1:{concerns:[], reframes:["","","",""]}, h2:{fam:"",ami:"",tra:"",mision:""}, h3:{acts:[], plan:[{t:"",dia:""},{t:"",dia:""}]}, h4:{socio:"",a:5,primera:"",tipo:"",solucion:""}, h5:{companero:"",parafrasis:"",sinConsejo:false,sentirHablar:"",sentirEscuchar:""}, h6:{integrantes:"",problema:"",mias:["","",""],otras:"",tercera:""}, h7:{fis:5,men:5,soc:5,esp:5,acc:{fis:"",men:"",soc:"",esp:""}}, done:{}, cur:1}; }
+let T = freshTaller();
+function mergeT(d){
+  const b = freshTaller(); if(!d || typeof d!=="object") return b;
+  for(let i=1;i<=7;i++){ const k="h"+i; if(d[k] && typeof d[k]==="object") b[k] = Object.assign(b[k], JSON.parse(JSON.stringify(d[k]))); }
+  b.h7.acc = Object.assign(freshTaller().h7.acc, (d.h7&&d.h7.acc)||{});
+  const pad = (a,n,f)=>{ a = Array.isArray(a)?a:[]; while(a.length<n) a.push(f()); return a.slice(0,n); };
+  b.h1.concerns = Array.isArray(b.h1.concerns)?b.h1.concerns:[]; b.h1.reframes = pad(b.h1.reframes,4,()=>"");
+  b.h3.acts = Array.isArray(b.h3.acts)?b.h3.acts:[]; b.h3.plan = pad(b.h3.plan,2,()=>({t:"",dia:""}));
+  b.h6.mias = pad(b.h6.mias,3,()=>"");
+  b.done = (d.done && typeof d.done==="object") ? d.done : {};
+  b.cur = typeof d.cur==="number" ? d.cur : 1;
+  return b;
+}
+const has = (x,n) => String(x||"").trim().length >= (n||1);
+const PRO = /(^|[^a-záéíóúñ])(elijo|elegir|elegiré|voy a|decido|decidí|puedo|podré|prefiero|me propongo|haré|hare|organizo|organizaré|busco|buscaré|planeo|aprovecho|me comprometo|aprenderé|lograré)/i;
+const REACT = /(no puedo|me toca|tengo que|si tan solo|así soy|asi soy|es culpa|no tengo tiempo|me tiene)/i;
+const proOk = r => has(r,8) && PRO.test(r) && !REACT.test(r);
+const nLines = x => String(x||"").split(/\n/).map(l=>l.trim()).filter(Boolean).length;
+const REQ = {
+ 1:[["Escribe al menos 3 preocupaciones", t=>t.h1.concerns.length>=3],["Ubica al menos una en tu círculo de influencia", t=>t.h1.concerns.some(c=>c.inf)],["Reformula las 4 frases con lenguaje proactivo", t=>t.h1.reframes.every(proOk)]],
+ 2:[["Responde al menos 2 de las 3 perspectivas", t=>[t.h2.fam,t.h2.ami,t.h2.tra].filter(x=>has(x,10)).length>=2],["Escribe tu misión en 3 a 5 líneas", t=>nLines(t.h2.mision)>=3 && nLines(t.h2.mision)<=5]],
+ 3:[["Registra al menos 4 actividades de ayer", t=>t.h3.acts.length>=4],["Agenda 2 actividades del cuadrante II con su día", t=>t.h3.plan.every(p=>has(p.t,3) && p.dia)]],
+ 4:[["Escribe con quién negociaste", t=>has(t.h4.socio,2)],["Describe la primera propuesta de cada uno", t=>has(t.h4.primera,10)],["Clasifica el acuerdo final", t=>!!t.h4.tipo],["Explica la solución o el resultado", t=>has(t.h4.solucion,20)]],
+ 5:[["Escribe con quién hiciste el ejercicio", t=>has(t.h5.companero,2)],["Parafrasea el problema que te contó", t=>has(t.h5.parafrasis,20)],["Confirma que escuchaste sin aconsejar", t=>!!t.h5.sinConsejo],["Cuenta cómo te fue en los dos roles", t=>has(t.h5.sentirHablar,5) && has(t.h5.sentirEscuchar,5)]],
+ 6:[["Describe el problema del grupo", t=>has(t.h6.problema,10)],["Aporta al menos 2 ideas propias", t=>t.h6.mias.filter(x=>has(x,3)).length>=2],["Registra las ideas de tus compañeros", t=>has(t.h6.otras,10)],["Escribe la tercera alternativa", t=>has(t.h6.tercera,20)]],
+ 7:[["Elige una acción pequeña por cada dimensión", t=>Object.values(t.h7.acc).every(x=>has(x,5))]]
+};
+const countDone = () => [1,2,3,4,5,6,7].filter(i=>T.done[i]).length;
+const v = x => esc(x==null?"":x);
+const fmtH = h => String(Math.round((+h||0)*10)/10).replace(".",",");
+function qHours(t){ const q={1:0,2:0,3:0,4:0}; t.h3.acts.forEach(a=>{ q[a.q] = (q[a.q]||0) + (+a.h||0); }); return q; }
+
+let draftTimer = null;
+function draftKey(){ return S.student ? "tej_taller_"+S.student.ced : null; }
+function saveDraft(){ clearTimeout(draftTimer); draftTimer = setTimeout(()=>{ try{ const k=draftKey(); if(k) localStorage.setItem(k, JSON.stringify(T)); }catch(e){} }, 300); }
+function loadDraft(ced){ T = freshTaller(); try{ const raw = localStorage.getItem("tej_taller_"+ced); if(raw) T = mergeT(JSON.parse(raw)); }catch(e){} }
+
+const HR = {
+ 1:()=>`<div class="w-block"><h3>Paso 1 · Tus preocupaciones reales</h3><p class="note">Escribe lo que hoy te preocupa: notas, familia, trabajo, dinero, futuro.</p>
+  <div class="row"><input class="w-input" id="h1new" maxlength="60" placeholder="Ej.: Pasar Contabilidad"><button class="btn-line" id="h1add" type="button">Agregar</button></div>
+  <div class="circles" id="h1circ"></div><p class="note">Toca una preocupación para moverla de círculo. Pregúntate: ¿puedo hacer algo concreto al respecto?</p></div>
+  <div class="w-block"><h3>Paso 2 · Cambia el lenguaje</h3><p class="note">Reescribe cada frase con lenguaje proactivo: "elijo", "voy a", "decido", "prefiero".</p>
+  ${REFRAMES.map((r,i)=>`<div class="rf"><q>${esc(r)}</q><input class="w-input" data-k="h1.reframes.${i}" value="${v(T.h1.reframes[i])}" placeholder="Reescríbela aquí" maxlength="160" aria-label="Reformulación ${i+1}"><span id="rf${i}"></span></div>`).join("")}</div>`,
+ 2:()=>`<div class="w-block"><h3>Paso 1 · Tu fiesta de 80 años</h3><p class="note">Imagina la celebración. ¿Qué te gustaría que dijera cada grupo de ti?</p>
+  ${[["fam","Tu familia diría que…"],["ami","Tus amigos dirían que…"],["tra","Tus compañeros de trabajo o estudio dirían que…"]].map(([k,l])=>`<div class="field"><label for="h2${k}">${l}</label><textarea class="w-input" id="h2${k}" data-k="h2.${k}" rows="2" maxlength="300">${v(T.h2[k])}</textarea></div>`).join("")}</div>
+  <div class="w-block"><h3>Paso 2 · Tu misión personal</h3><p class="note">Con base en lo anterior, escribe de 3 a 5 líneas, una idea por línea. Puedes empezar con "Mi misión es…".</p>
+  <textarea class="w-input" id="h2mision" data-k="h2.mision" rows="5" maxlength="700" placeholder="Mi misión es…">${v(T.h2.mision)}</textarea><span id="h2count" class="note"></span></div>`,
+ 3:()=>`<div class="w-block"><h3>Paso 1 · ¿Qué hiciste ayer?</h3><p class="note">Registra tus actividades con las horas aproximadas y ubícalas en un cuadrante.</p>
+  <div class="row"><input class="w-input" id="h3t" maxlength="50" placeholder="Ej.: Redes sociales"><input class="w-input mono" id="h3h" type="number" min="0.5" max="16" step="0.5" value="1" style="flex:0 0 92px" aria-label="Horas"><select class="w-input" id="h3q" style="flex:1 1 210px" aria-label="Cuadrante">${Object.entries(QUADS).map(([k,l])=>`<option value="${k}">${l}</option>`).join("")}</select><button class="btn-line" id="h3add" type="button">Agregar</button></div>
+  <div class="matrix" id="h3mx"></div><p class="note" id="h3ins"></p></div>
+  <div class="w-block"><h3>Paso 2 · Reto de la semana</h3><p class="note">Agenda 2 actividades del cuadrante II: estudiar con anticipación, hacer ejercicio, planear, cuidar tus relaciones.</p>
+  ${[0,1].map(i=>`<div class="row"><input class="w-input" data-k="h3.plan.${i}.t" value="${v(T.h3.plan[i].t)}" maxlength="60" placeholder="Actividad ${i+1}" aria-label="Actividad ${i+1}"><select class="w-input" data-k="h3.plan.${i}.dia" style="flex:0 1 150px" aria-label="Día de la actividad ${i+1}"><option value="">Día</option>${DIAS.map(d=>`<option ${T.h3.plan[i].dia===d?"selected":""}>${d}</option>`).join("")}</select></div>`).join("")}</div>`,
+ 4:()=>`<div class="case"><span class="area">Escenario</span><p>Tú y tu compañero(a) tienen <b>10 horas</b> para terminar el proyecto final. Tú necesitas tiempo para la investigación; tu compañero(a), para diseñar la presentación. Los dos quieren una buena nota.</p></div>
+  <div class="field"><label for="h4s">¿Con quién negociaste?</label><input class="w-input" id="h4s" data-k="h4.socio" value="${v(T.h4.socio)}" maxlength="60" placeholder="Nombre de tu compañero(a)"></div>
+  <div class="field"><label for="h4p">Primera propuesta de cada uno</label><textarea class="w-input" id="h4p" data-k="h4.primera" rows="2" maxlength="400" placeholder="Yo propuse… Mi compañero(a) propuso…">${v(T.h4.primera)}</textarea></div>
+  <div class="w-block"><h3>Acuerdo final de horas</h3><div class="sl"><span>Para ti: <b class="mono" id="h4a"></b> h · Para tu compañero(a): <b class="mono" id="h4b"></b> h</span><span></span><input type="range" min="0" max="10" step="1" data-k="h4.a" value="${T.h4.a}" aria-label="Horas para ti"></div><div class="split" id="h4split"><i></i><b></b></div></div>
+  <div class="w-block"><h3>¿Qué tipo de acuerdo lograron?</h3><div class="radios">${Object.entries(TIPOS).map(([k,l])=>`<label class="radio"><input type="radio" name="h4tipo" data-k="h4.tipo" value="${k}" ${T.h4.tipo===k?"checked":""}><span>${l}</span></label>`).join("")}</div></div>
+  <div class="field"><label for="h4sol">Solución creativa o explicación del resultado</label><textarea class="w-input" id="h4sol" data-k="h4.solucion" rows="3" maxlength="500" placeholder="Ej.: Investigamos juntos en 3 horas y así quedó más tiempo para el diseño…">${v(T.h4.solucion)}</textarea><span class="note">Compara: ¿en qué se diferencia tu acuerdo de un resultado ganar-perder?</span></div>`,
+ 5:()=>`<div class="w-block"><h3>Cronómetro de escucha</h3><p class="note">Rol 1: tu compañero(a) habla 2 minutos y tú solo escuchas. Después cambian de rol.</p><div class="timer"><span class="clock" id="h5clock">2:00</span><button class="btn" type="button" id="h5go">Iniciar</button><button class="btn-line" type="button" id="h5rs">Reiniciar</button></div></div>
+  <div class="field"><label for="h5c">¿Con quién hiciste el ejercicio?</label><input class="w-input" id="h5c" data-k="h5.companero" value="${v(T.h5.companero)}" maxlength="60"></div>
+  <div class="field"><label for="h5p">Paráfrasis del problema que te contó</label><textarea class="w-input" id="h5p" data-k="h5.parafrasis" rows="3" maxlength="500" placeholder="Lo que entiendo es que…">${v(T.h5.parafrasis)}</textarea><span class="note">Sin juicios ni consejos: solo lo que entendiste.</span></div>
+  <label class="radio"><input type="checkbox" data-k="h5.sinConsejo" ${T.h5.sinConsejo?"checked":""}><span>Confirmo que escuché sin aconsejar ni interrumpir.</span></label>
+  <div class="field"><label for="h5h">¿Cómo te sentiste cuando te escucharon?</label><textarea class="w-input" id="h5h" data-k="h5.sentirHablar" rows="2" maxlength="300">${v(T.h5.sentirHablar)}</textarea></div>
+  <div class="field"><label for="h5e">¿Qué fue lo más difícil al escuchar sin aconsejar?</label><textarea class="w-input" id="h5e" data-k="h5.sentirEscuchar" rows="2" maxlength="300">${v(T.h5.sentirEscuchar)}</textarea></div>`,
+ 6:()=>`<div class="field"><label for="h6i">Integrantes del grupo</label><input class="w-input" id="h6i" data-k="h6.integrantes" value="${v(T.h6.integrantes)}" maxlength="150" placeholder="Nombres separados por coma"></div>
+  <div class="field"><label for="h6p">Problema a mejorar</label><textarea class="w-input" id="h6p" data-k="h6.problema" rows="2" maxlength="300" placeholder="Ej.: Las filas largas en la cafetería de la universidad">${v(T.h6.problema)}</textarea></div>
+  <div class="w-block"><h3>Paso 1 · Tus ideas individuales</h3>${[0,1,2].map(i=>`<input class="w-input" data-k="h6.mias.${i}" value="${v(T.h6.mias[i])}" maxlength="120" placeholder="Idea ${i+1}" aria-label="Idea ${i+1}">`).join("")}</div>
+  <div class="field"><label for="h6o">Paso 2 · Ideas que trajeron tus compañeros</label><textarea class="w-input" id="h6o" data-k="h6.otras" rows="3" maxlength="500">${v(T.h6.otras)}</textarea></div>
+  <div class="field"><label for="h6t">Paso 3 · La tercera alternativa</label><textarea class="w-input" id="h6t" data-k="h6.tercera" rows="3" maxlength="500" placeholder="Combinando ideas, llegamos a…">${v(T.h6.tercera)}</textarea><span class="note">Debe ser una solución que nadie traía al inicio, construida con las ideas de todos.</span></div>`,
+ 7:()=>`<div class="two"><svg class="radar" id="h7radar" viewBox="0 0 300 244" role="img" aria-label="Gráfico de tus cuatro dimensiones"></svg><div class="sliders">${DIMS.map(([k,l])=>`<div class="sl"><span>${l}</span><b class="mono" id="h7v${k}">${T.h7[k]}</b><input type="range" min="1" max="10" step="1" data-k="h7.${k}" value="${T.h7[k]}" aria-label="${l}"></div>`).join("")}</div></div>
+  <p class="note" id="h7ins"></p>
+  <div class="w-block"><h3>Una acción pequeña por dimensión para la próxima semana</h3>${DIMS.map(([k,l,ph])=>`<div class="field"><label for="h7a${k}">${l}</label><input class="w-input" id="h7a${k}" data-k="h7.acc.${k}" value="${v(T.h7.acc[k])}" maxlength="120" placeholder="${ph}"></div>`).join("")}</div>`
+};
+
+function renderTabs(){
+  $("wTabs").innerHTML = [1,2,3,4,5,6,7].map(i=>`<button class="htab ${T.done[i]?"done":""}" type="button" data-h="${i}" aria-current="${i===T.cur}" title="${esc(HABITS[i].t)}" aria-label="Hábito ${i}: ${esc(HABITS[i].t)}${T.done[i]?" (completo)":""}">${i}</button>`).join("") + `<button class="htab wide" type="button" data-h="0" aria-current="${T.cur===0}">Resumen</button>`;
+  $("wProg").textContent = `${countDone()} de 7 completos`;
+}
+function renderTaller(){
+  stopTimer();
+  const n = T.cur;
+  renderTabs();
+  $("wHabit").innerHTML = `<div class="w-block"><span class="eyebrow">Hábito ${n} de 7</span><h2 style="font-size:23px">${esc(HABITS[n].t)}</h2><p class="lead">${esc(HABITS[n].act)}</p></div>${HR[n]()}
+    <div class="w-block"><span class="eyebrow">Para completar este hábito</span><ul class="req" id="wReq"></ul></div>
+    <div class="row"><button class="btn" type="button" id="wSave">${n<7?"Guardar y seguir":"Guardar y ver resumen"}</button><button class="btn-line" type="button" id="wSaveOnly">Solo guardar</button></div>`;
+  $("wNote").textContent = ""; $("wNote").className = "note";
+  if(n===1) renderCircles();
+  if(n===3) renderMatrix();
+  refreshVisual(n); updateReq(n); updateHud();
+}
+function renderCircles(){
+  const el = $("h1circ"); if(!el) return;
+  const chip = (c,i) => `<span class="cbtn" role="button" tabindex="0" data-ci="${i}" aria-label="${esc(c.t)}: mover de círculo">${esc(c.t)}<button class="x" type="button" data-del="${i}" aria-label="Quitar ${esc(c.t)}">×</button></span>`;
+  const out = T.h1.concerns.map((c,i)=>c.inf?"":chip(c,i)).join(""), inn = T.h1.concerns.map((c,i)=>c.inf?chip(c,i):"").join("");
+  el.innerHTML = `<span class="ring-label">Círculo de preocupación · no depende de mí</span><div class="chips">${out || '<span class="note">Aquí quedan las preocupaciones que no controlas.</span>'}</div><div class="inner"><span class="ring-label">Círculo de influencia · sí puedo actuar</span><div class="chips">${inn || '<span class="note">Toca una preocupación para traerla aquí.</span>'}</div></div>`;
+}
+function renderMatrix(){
+  const el = $("h3mx"); if(!el) return;
+  const q = qHours(T);
+  el.innerHTML = [1,2,3,4].map(k=>`<div class="quad q${k}"><h4>${QUADS[k]}</h4><span class="hrs">${fmtH(q[k])} h</span><ul>${T.h3.acts.map((a,i)=>String(a.q)===String(k)?`<li><span>${esc(a.t)} · ${fmtH(a.h)} h</span><button class="x" type="button" data-del3="${i}" aria-label="Quitar ${esc(a.t)}">×</button></li>`:"").join("")}</ul></div>`).join("");
+  const all = q[1]+q[2]+q[3]+q[4];
+  let ins = "";
+  if(all>0){ const p = k => Math.round(q[k]/all*100);
+    ins = `Cuadrante II: ${p(2)}% de tu tiempo registrado. Cuadrantes III y IV: ${p(3)+p(4)}%. ` + (q[2] >= q[3]+q[4] ? "Buen balance: estás protegiendo lo importante." : "Hay espacio para pasar tiempo de urgencias ajenas y distracciones hacia lo importante."); }
+  $("h3ins").textContent = ins;
+}
+function renderRadar(){
+  const el = $("h7radar"); if(!el) return;
+  const cx=150, cy=124, R=80, ks=["fis","men","soc","esp"], ang=[-90,0,90,180].map(a=>a*Math.PI/180);
+  const pt = (i,r) => [ (cx+Math.cos(ang[i])*r).toFixed(1), (cy+Math.sin(ang[i])*r).toFixed(1) ];
+  let g = "";
+  [2,4,6,8,10].forEach(l=>{ g += `<polygon class="g" points="${[0,1,2,3].map(i=>pt(i,R*l/10).join(",")).join(" ")}"/>`; });
+  [0,1,2,3].forEach(i=>{ const p=pt(i,R); g += `<line class="g" x1="${cx}" y1="${cy}" x2="${p[0]}" y2="${p[1]}"/>`; });
+  g += `<polygon class="a" points="${ks.map((k,i)=>pt(i,R*T.h7[k]/10).join(",")).join(" ")}"/>`;
+  ks.forEach((k,i)=>{ const p=pt(i,R*T.h7[k]/10); g += `<circle class="d" cx="${p[0]}" cy="${p[1]}" r="4"/>`; });
+  g += `<text x="${cx}" y="${cy-R-12}" text-anchor="middle">Física ${T.h7.fis}</text><text x="${cx+R}" y="${cy-12}" text-anchor="middle">Mental ${T.h7.men}</text><text x="${cx}" y="${cy+R+22}" text-anchor="middle">Social ${T.h7.soc}</text><text x="${cx-R}" y="${cy-12}" text-anchor="middle">Espiritual ${T.h7.esp}</text>`;
+  el.innerHTML = g;
+  const low = DIMS.reduce((a,d)=>T.h7[d[0]] < T.h7[a[0]] ? d : a);
+  $("h7ins").textContent = `Tu dimensión más baja es ${low[1].toLowerCase()} (${T.h7[low[0]]}/10). Es un buen lugar para empezar.`;
+}
+function refreshVisual(n){
+  if(n===1){ T.h1.reframes.forEach((r,i)=>{ const sp=$("rf"+i); if(!sp) return;
+    if(!has(r)){ sp.className="note"; sp.textContent=""; }
+    else if(proOk(r)){ sp.className="ok-t"; sp.textContent="✓ Lenguaje proactivo"; }
+    else { sp.className="warn-t"; sp.textContent="Aún suena reactivo. Prueba con \"elijo\", \"voy a\" o \"decido\"."; } }); }
+  if(n===2){ const c=nLines(T.h2.mision), sp=$("h2count"); if(sp){ sp.textContent = `${c} línea(s) · se piden de 3 a 5`; sp.className = c>=3&&c<=5 ? "ok-t" : "note"; } }
+  if(n===4){ const a=T.h4.a; if($("h4a")){ $("h4a").textContent=a; $("h4b").textContent=10-a; const sp=$("h4split"); sp.querySelector("i").style.width=(a*10)+"%"; sp.querySelector("b").style.width=((10-a)*10)+"%"; } }
+  if(n===7){ DIMS.forEach(([k])=>{ const b=$("h7v"+k); if(b) b.textContent=T.h7[k]; }); renderRadar(); }
+}
+function updateReq(n){
+  const el = $("wReq"); if(!el || !REQ[n]) return;
+  const res = REQ[n].map(([l,f])=>[l, !!f(T)]);
+  el.innerHTML = res.map(([l,ok])=>`<li class="${ok?"ok":""}">${esc(l)}</li>`).join("");
+  const was = !!T.done[n]; T.done[n] = res.every(r=>r[1]);
+  if(was !== T.done[n]) renderTabs();
+}
+function setPath(o,p,val){ const ks=p.split("."); let c=o; for(let i=0;i<ks.length-1;i++) c=c[ks[i]]; c[ks[ks.length-1]]=val; }
+function onField(e){
+  const el = e.target.closest("[data-k]"); if(!el) return;
+  let val;
+  if(el.type==="checkbox") val = el.checked;
+  else if(el.type==="radio"){ if(!el.checked) return; val = el.value; }
+  else if(el.type==="range") val = +el.value;
+  else val = el.value;
+  setPath(T, el.dataset.k, val);
+  refreshVisual(T.cur); updateReq(T.cur); saveDraft();
+}
+$("wHabit").addEventListener("input", onField);
+$("wHabit").addEventListener("change", onField);
+function addConcern(){ const i=$("h1new"); const t=i.value.trim(); if(!t || T.h1.concerns.length>=12) return; T.h1.concerns.push({t, inf:false}); i.value=""; renderCircles(); updateReq(1); saveDraft(); i.focus(); }
+function addActivity(){ const t=$("h3t").value.trim(), h=+$("h3h").value, q=+$("h3q").value; if(!t || !(h>0) || h>16 || T.h3.acts.length>=20) return; T.h3.acts.push({t, h, q}); $("h3t").value=""; renderMatrix(); updateReq(3); saveDraft(); $("h3t").focus(); }
+$("wHabit").addEventListener("click", async e=>{
+  const tg = e.target;
+  if(tg.closest("#h1add")) return addConcern();
+  if(tg.closest("#h3add")) return addActivity();
+  const del = tg.closest("[data-del]"); if(del){ T.h1.concerns.splice(+del.dataset.del,1); renderCircles(); updateReq(1); saveDraft(); return; }
+  const ci = tg.closest("[data-ci]"); if(ci){ const c=T.h1.concerns[+ci.dataset.ci]; c.inf=!c.inf; renderCircles(); updateReq(1); saveDraft(); return; }
+  const d3 = tg.closest("[data-del3]"); if(d3){ T.h3.acts.splice(+d3.dataset.del3,1); renderMatrix(); updateReq(3); saveDraft(); return; }
+  if(tg.closest("#h5go")) return toggleTimer();
+  if(tg.closest("#h5rs")) return resetTimer();
+  if(tg.closest("#wSave")){ await saveTaller(); if(T.cur<7){ T.cur++; renderTaller(); } else renderSummary(); $("panel").scrollIntoView({block:"start", behavior:"smooth"}); return; }
+  if(tg.closest("#wSaveOnly")) return saveTaller();
+  if(tg.closest("#wsCopy")) return copyText(tallerText(S.student, T), tg.closest("#wsCopy"), "wTicket");
+  if(tg.closest("#wsDl")){ if(!DL) return; const safe=S.student.name.normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^A-Za-z0-9]+/g,"_"); try{ await DL.save({filename:`taller_7_habitos_${safe}.txt`, data:new Blob([tallerText(S.student,T)],{type:"text/plain"})}); }catch(err){} }
+});
+$("wHabit").addEventListener("keydown", e=>{
+  if(e.key==="Enter" && e.target.id==="h1new"){ e.preventDefault(); addConcern(); }
+  if(e.key==="Enter" && e.target.id==="h3t"){ e.preventDefault(); addActivity(); }
+  if((e.key==="Enter" || e.key===" ") && e.target.matches("[data-ci]")){ e.preventDefault(); const c=T.h1.concerns[+e.target.dataset.ci]; c.inf=!c.inf; renderCircles(); updateReq(1); saveDraft(); }
+});
+$("wTabs").addEventListener("click", e=>{
+  const b = e.target.closest("[data-h]"); if(!b) return;
+  const h = +b.dataset.h;
+  if(h===0) renderSummary(); else { T.cur = h; renderTaller(); }
+  saveDraft();
+});
+
+/* Cronómetro de escucha */
+const TM = {left:120, id:null};
+function paintClock(){ const c=$("h5clock"); if(!c) return; c.textContent = `${Math.floor(TM.left/60)}:${String(TM.left%60).padStart(2,"0")}`; c.classList.toggle("end", TM.left===0); const g=$("h5go"); if(g) g.textContent = TM.id ? "Pausar" : (TM.left===0 ? "Cambiar de rol" : (TM.left<120 ? "Continuar" : "Iniciar")); }
+function toggleTimer(){
+  if(TM.id){ clearInterval(TM.id); TM.id=null; paintClock(); return; }
+  if(TM.left===0) TM.left = 120;
+  TM.id = setInterval(()=>{ TM.left = Math.max(0, TM.left-1); if(TM.left===0){ clearInterval(TM.id); TM.id=null; } paintClock(); }, 1000);
+  paintClock();
+}
+function resetTimer(){ if(TM.id) clearInterval(TM.id); TM.id=null; TM.left=120; paintClock(); }
+function stopTimer(){ if(TM.id) clearInterval(TM.id); TM.id=null; TM.left=120; }
+
+async function saveTaller(){
+  const note = $("wNote"); saveDraft();
+  const c = countDone();
+  if(!DB || !USER){ note.className="note"; note.textContent = `Avance guardado en este navegador (${c} de 7). Al terminar, copia el comprobante del resumen y envíaselo a tu docente.`; return false; }
+  try{
+    const uid = await USER.id(); if(!uid) throw new Error("sin id");
+    await DB.doc("talleres/"+uid).set({nombre:S.student.name, cedula:S.student.ced, grupo:S.student.group||"", completados:c, avance:tallerScore(T), fecha:new Date().toISOString(), h1:T.h1, h2:T.h2, h3:T.h3, h4:T.h4, h5:T.h5, h6:T.h6, h7:T.h7, done:T.done});
+    note.className="note ok"; note.textContent = `Avance guardado (${c} de 7). Tu docente ya puede verlo.`;
+    return true;
+  }catch(e){ note.className="note bad"; note.textContent = "No fue posible guardar en línea. Tu avance queda en este navegador; al final copia el comprobante."; return false; }
+}
+function renderSummary(){
+  stopTimer(); T.cur = 0; renderTabs();
+  const c = countDone();
+  $("wHabit").innerHTML = `<div class="w-block"><span class="eyebrow">Resumen del taller</span><h2 style="font-size:23px">${c} de 7 hábitos completos</h2><p class="lead">${c===7 ? "Completaste todo el taller. Copia o descarga tu comprobante y envíaselo a tu docente." : "Puedes volver a cualquier hábito con los botones numerados para completarlo."}</p></div><div class="ticket" id="wTicket"></div><div class="row"><button class="btn" type="button" id="wsCopy">Copiar comprobante</button>${DL ? '<button class="btn-line" type="button" id="wsDl">Descargar comprobante</button>' : ""}</div>`;
+  $("wTicket").textContent = tallerText(S.student, T);
+  updateHud();
+}
+function tallerText(st, t, fecha){
+  const s = x => String(x==null?"":x).trim() || "—";
+  const ind = x => s(x).split(/\n/).map(l=>l.trim()).filter(Boolean).join("\n      ") || "—";
+  const mark = i => t.done[i] ? "(completo)" : "(pendiente)";
+  const q = qHours(t);
+  const done = [1,2,3,4,5,6,7].filter(i=>t.done[i]).length;
+  const body = { ...t }; delete body.cur;
+  const L = [
+    "Taller de los 7 hábitos · Comprobante",
+    `Estudiante: ${s(st.name)}`, `Cédula: ${s(st.ced)}` + (st.group ? `\nGrupo: ${st.group}` : ""),
+    `Hábitos completos: ${done}/7 · Avance del taller: ${tallerScore(t)}%`, "",
+    `1. Ser proactivo ${mark(1)}`,
+    `   Círculo de influencia: ${t.h1.concerns.filter(c=>c.inf).map(c=>c.t).join(", ") || "—"}`,
+    `   Círculo de preocupación: ${t.h1.concerns.filter(c=>!c.inf).map(c=>c.t).join(", ") || "—"}`,
+    ...REFRAMES.map((r,i)=>`   "${r}" → ${s(t.h1.reframes[i])}`), "",
+    `2. Empezar con un fin en mente ${mark(2)}`,
+    `   Familia: ${s(t.h2.fam)}`, `   Amigos: ${s(t.h2.ami)}`, `   Compañeros: ${s(t.h2.tra)}`,
+    `   Misión:\n      ${ind(t.h2.mision)}`, "",
+    `3. Poner primero lo primero ${mark(3)}`,
+    `   Horas de ayer: I ${fmtH(q[1])} · II ${fmtH(q[2])} · III ${fmtH(q[3])} · IV ${fmtH(q[4])}`,
+    `   Actividades: ${t.h3.acts.map(a=>`${a.t} (${fmtH(a.h)} h, Q${a.q})`).join("; ") || "—"}`,
+    `   Agendado: ${t.h3.plan.map(p=>`${s(p.t)} (${p.dia||"sin día"})`).join("; ")}`, "",
+    `4. Pensar ganar-ganar ${mark(4)}`,
+    `   Con: ${s(t.h4.socio)} · Acuerdo: ${TIPOS[t.h4.tipo] || "—"} · Horas: ${t.h4.a} para mí / ${10-t.h4.a} para mi compañero(a)`,
+    `   Primera propuesta: ${s(t.h4.primera)}`, `   Solución: ${s(t.h4.solucion)}`, "",
+    `5. Buscar primero entender ${mark(5)}`,
+    `   Con: ${s(t.h5.companero)} · Escuchó sin aconsejar: ${t.h5.sinConsejo ? "Sí" : "No"}`,
+    `   Paráfrasis: ${s(t.h5.parafrasis)}`, `   Al ser escuchado(a): ${s(t.h5.sentirHablar)}`, `   Lo más difícil al escuchar: ${s(t.h5.sentirEscuchar)}`, "",
+    `6. Sinergizar ${mark(6)}`,
+    `   Grupo: ${s(t.h6.integrantes)}`, `   Problema: ${s(t.h6.problema)}`,
+    `   Mis ideas: ${t.h6.mias.filter(x=>has(x)).join("; ") || "—"}`, `   Ideas del grupo: ${s(t.h6.otras)}`, `   Tercera alternativa: ${s(t.h6.tercera)}`, "",
+    `7. Afilar la sierra ${mark(7)}`,
+    `   Física ${t.h7.fis} · Mental ${t.h7.men} · Social ${t.h7.soc} · Espiritual ${t.h7.esp}`,
+    ...DIMS.map(([k,l])=>`   ${l}: ${s(t.h7.acc[k])}`), "",
+    `Código: ${fnv(String(st.ced)+JSON.stringify(body))}`,
+    `Fecha: ${fmtDate(fecha || new Date().toISOString())}`
+  ];
+  return L.join("\n");
+}
+
+/* ---------------- Escena 3D ---------------- */
+const scene = (function(){
+  const noop = {overview(){},tour(){},focus(){},outcome(){},event(){},finale(){},reset(){}};
+  if(!window.THREE) { $("fallback").hidden=false; return noop; }
+  const canvas = $("scene");
+  let renderer;
+  try{ renderer = new THREE.WebGLRenderer({canvas, antialias:true}); }catch(e){ $("fallback").hidden=false; return noop; }
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  renderer.setPixelRatio(Math.min(2, devicePixelRatio||1));
+  renderer.shadowMap.enabled = true;
+  const sc = new THREE.Scene();
+  const cam = new THREE.PerspectiveCamera(36, 1, 0.1, 100);
+  const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim() || "#888";
+
+  sc.add(new THREE.HemisphereLight(0xffffff, 0x8899aa, 0.75));
+  const sun = new THREE.DirectionalLight(0xffffff, 0.75);
+  sun.position.set(6,12,8); sun.castShadow = true;
+  sun.shadow.mapSize.set(1024,1024);
+  Object.assign(sun.shadow.camera,{left:-12,right:12,top:10,bottom:-10});
+  sc.add(sun);
+
+  const floorMat = new THREE.MeshStandardMaterial({roughness:.95});
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(18,12), floorMat);
+  floor.rotation.x = -Math.PI/2; floor.receiveShadow = true; sc.add(floor);
+  const wallMat = new THREE.MeshStandardMaterial({roughness:.9});
+  const wallB = new THREE.Mesh(new THREE.BoxGeometry(18,1.6,.25), wallMat); wallB.position.set(0,.8,-6); sc.add(wallB);
+  const wallL = new THREE.Mesh(new THREE.BoxGeometry(.25,1.6,12), wallMat); wallL.position.set(-9,.8,0); sc.add(wallL);
+
+  const rugColors = [0x6C8EBF,0x5FA88A,0xC9925B,0x8D7BC4,0xD27A6A,0x4FA0B0,0xB79A3E,0x7F8C9C];
+  const stations = [];
+  const flat = c => new THREE.MeshStandardMaterial({color:c, roughness:.7, flatShading:true});
+  function person(color){
+    const g = new THREE.Group();
+    const bodyM = flat(color);
+    const body = new THREE.Mesh(new THREE.CylinderGeometry(.17,.22,.55,10), bodyM); body.position.y=.42; body.castShadow=true;
+    const head = new THREE.Mesh(new THREE.SphereGeometry(.15,14,12), flat(0xE9C4A0)); head.position.y=.86; head.castShadow=true;
+    g.add(body, head); g.userData.bodyM = bodyM; return g;
+  }
+  function label(text){
+    const c = document.createElement("canvas"); c.width=512; c.height=112;
+    const x = c.getContext("2d");
+    x.fillStyle="rgba(20,30,52,.86)"; const r=26; x.beginPath(); x.moveTo(r,0); x.arcTo(512,0,512,112,r); x.arcTo(512,112,0,112,r); x.arcTo(0,112,0,0,r); x.arcTo(0,0,512,0,r); x.fill();
+    x.fillStyle="#fff"; x.font="600 44px Figtree, sans-serif"; x.textAlign="center"; x.textBaseline="middle"; x.fillText(text,256,58);
+    const tex = new THREE.CanvasTexture(c);
+    const s = new THREE.Sprite(new THREE.SpriteMaterial({map:tex, depthTest:false}));
+    s.scale.set(2.3,.5,1); return s;
+  }
+  const xs=[-5.4,-1.8,1.8,5.4], zs=[-2.6,2.4];
+  CASES.forEach((c,i)=>{
+    const g = new THREE.Group();
+    const sx = xs[i%4], sz = zs[Math.floor(i/4)];
+    g.position.set(sx,0,sz);
+    const rug = new THREE.Mesh(new THREE.BoxGeometry(2.9,.04,2.9), new THREE.MeshStandardMaterial({color:rugColors[i], roughness:1, transparent:true, opacity:.55}));
+    rug.position.y=.02; rug.receiveShadow=true; g.add(rug);
+    const top = new THREE.Mesh(new THREE.BoxGeometry(1.3,.07,.65), flat(0xF2F2F0)); top.position.set(0,.62,-.35); top.castShadow=true; g.add(top);
+    [[-.58,-.62],[.58,-.62],[-.58,-.08],[.58,-.08]].forEach(([lx,lz])=>{ const l=new THREE.Mesh(new THREE.BoxGeometry(.05,.6,.05), flat(0x55606E)); l.position.set(lx,.3,lz); g.add(l); });
+    const mon = new THREE.Mesh(new THREE.BoxGeometry(.5,.32,.04), flat(0x2A3140)); mon.position.set(0,.86,-.55); g.add(mon);
+    const scr = new THREE.Mesh(new THREE.PlaneGeometry(.44,.26), new THREE.MeshBasicMaterial({color:0x8FD3FF})); scr.position.set(0,.86,-.528); g.add(scr);
+    const w = person(0x8A97AD); w.position.set(0,0,.25); w.rotation.y=Math.PI; g.add(w);
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(.02,.02,1.2,6), flat(0x55606E)); pole.position.set(1.15,.6,-1.1); g.add(pole);
+    const lampM = new THREE.MeshStandardMaterial({color:0x9AA5B5, emissive:0x000000, roughness:.4});
+    const lamp = new THREE.Mesh(new THREE.SphereGeometry(.16,16,12), lampM); lamp.position.set(1.15,1.3,-1.1); g.add(lamp);
+    const lb = label(c.area); lb.position.set(0,2.05,-.4); g.add(lb);
+    sc.add(g);
+    stations.push({g, w, lampM, scr, sx, sz, state:-1, jump:0});
+  });
+
+  const walkers = [];
+  for(let i=0;i<10;i++){
+    const p = person(0x8A97AD);
+    p.position.set((Math.random()-.5)*14, 0, (Math.random()-.5)*1.2 - .1);
+    sc.add(p);
+    walkers.push({p, tx:p.position.x, tz:p.position.z, ph:Math.random()*6});
+  }
+  function newTarget(w){ w.tx=(Math.random()-.5)*15; w.tz= Math.random()<.6 ? (Math.random()-.5)*1.4 - .1 : (Math.random()<.5? -4.6 : 4.6)+(Math.random()-.5); }
+
+  const confetti = [];
+  const confM = [0xE3A11B,0x45BF88,0x6C8EBF,0xEC6B55].map(c=>new THREE.MeshBasicMaterial({color:c, side:THREE.DoubleSide}));
+  const confG = new THREE.PlaneGeometry(.09,.06);
+  function burst(x,z,n){
+    if(reduce) return;
+    for(let i=0;i<n;i++){ const m=new THREE.Mesh(confG, confM[i%4]); m.position.set(x,1.4,z); sc.add(m);
+      confetti.push({m, vx:(Math.random()-.5)*3, vy:2+Math.random()*2.5, vz:(Math.random()-.5)*3, life:1.8}); }
+  }
+
+  function themeColors(){
+    const bg = new THREE.Color(css("--scene-bg"));
+    sc.background = bg; sc.fog = new THREE.Fog(bg, 22, 40);
+    floorMat.color.set(css("--scene-floor")); wallMat.color.set(css("--scene-wall"));
+  }
+  themeColors();
+  matchMedia("(prefers-color-scheme: dark)").addEventListener("change", themeColors);
+  new MutationObserver(themeColors).observe(document.documentElement,{attributes:true, attributeFilter:["data-theme","class"]});
+
+  const camPos = new THREE.Vector3(0,12.5,13.5), camLook = new THREE.Vector3(0,0,0);
+  const curLook = camLook.clone();
+  cam.position.copy(camPos); cam.lookAt(curLook);
+  let mode = "overview", orbit = 0, flash = 0;
+
+  function resize(){
+    const r = canvas.parentElement.getBoundingClientRect();
+    const w = Math.max(1, r.width), h = Math.max(1, r.height);
+    renderer.setSize(w,h,false); cam.aspect = w/h;
+    cam.fov = w/h < .9 ? 50 : 36; cam.updateProjectionMatrix();
+  }
+  new ResizeObserver(resize).observe(canvas.parentElement); resize();
+
+  const clock = new THREE.Clock();
+  const tmp = new THREE.Color(), grey = new THREE.Color(0x8A97AD), happy = new THREE.Color(0x3FAF7E), sad = new THREE.Color(0xB85A4A);
+  function loop(){
+    const dt = Math.min(.05, clock.getDelta()), t = clock.elapsedTime;
+    const clima = S.ind.clima/100;
+    // cámara
+    if(mode==="finale" && !reduce){ orbit += dt*.18; camPos.set(Math.sin(orbit)*15, 10, Math.cos(orbit)*15); }
+    const k = reduce ? 1 : 1-Math.pow(.02, dt);
+    cam.position.lerp(camPos, k); curLook.lerp(camLook, k); cam.lookAt(curLook);
+    // ánimo del equipo
+    tmp.copy(grey).lerp(clima>=.5?happy:sad, Math.abs(clima-.5)*1.6);
+    walkers.forEach(w=>{
+      const p=w.p, dx=w.tx-p.position.x, dz=w.tz-p.position.z, d=Math.hypot(dx,dz);
+      const sp = reduce ? 0 : (.35 + clima*1.3);
+      if(d<.15) newTarget(w);
+      else { p.position.x += dx/d*sp*dt; p.position.z += dz/d*sp*dt; p.rotation.y = Math.atan2(dx,dz); }
+      p.position.y = reduce?0:Math.abs(Math.sin(t*(4+clima*5)+w.ph))*(.03+clima*.09);
+      p.userData.bodyM.color.lerp(tmp, .03);
+    });
+    stations.forEach((s,i)=>{
+      if(s.jump>0){ s.jump -= dt; s.w.position.y = Math.abs(Math.sin(s.jump*9))*.35*(s.jump/1.4); }
+      s.scr.material.color.setHSL(.55, .7, .55 + Math.sin(t*2+i)*.05);
+      if(s.state<0 && mode==="focus" && current===i){ s.lampM.emissive.setHex(0x8a6a10); s.lampM.emissiveIntensity = .6+Math.sin(t*5)*.4; }
+    });
+    for(let i=confetti.length-1;i>=0;i--){ const c=confetti[i]; c.life-=dt; c.vy-=6*dt;
+      c.m.position.x+=c.vx*dt; c.m.position.y=Math.max(.02,c.m.position.y+c.vy*dt); c.m.position.z+=c.vz*dt; c.m.rotation.x+=dt*6; c.m.rotation.y+=dt*4;
+      if(c.life<=0){ sc.remove(c.m); confetti.splice(i,1); } }
+    if(flash>0){ flash-=dt; }
+    renderer.render(sc, cam);
+    requestAnimationFrame(loop);
+  }
+  let current = -1;
+  requestAnimationFrame(loop);
+
+  const LAMP = {3:0x2FBF7A, 1:0xE9A23B, 0:0xE2523C};
+  return {
+    overview(){ mode="overview"; current=-1; camPos.set(0,12.5,13.5); camLook.set(0,0,0); },
+    tour(){ mode="finale"; current=-1; camLook.set(0,0,0); },
+    focus(i){ mode="focus"; current=i; const s=stations[i]; camPos.set(s.sx+2.6, 4.6, s.sz+5.4); camLook.set(s.sx, .7, s.sz-.2); },
+    outcome(i, stars){ const s=stations[i]; s.state=stars; s.lampM.color.setHex(LAMP[stars]); s.lampM.emissive.setHex(LAMP[stars]); s.lampM.emissiveIntensity=.8;
+      s.w.userData.bodyM.color.setHex(stars===3?0x3FAF7E:stars===1?0xD89A3A:0xB85A4A);
+      if(stars===3){ s.jump=1.4; burst(s.sx, s.sz, 70); } else { s.w.scale.set(1,.9,1); } },
+    event(passed){ mode="overview"; current=-1; camPos.set(0,9.5,11.5); camLook.set(0,0,0); if(passed) burst(0,0,50); },
+    finale(score){ mode="finale"; current=-1; camLook.set(0,0,0); if(score>=70){ stations.forEach(s=>{ if(s.state===3) burst(s.sx,s.sz,25); }); } },
+    reset(){ stations.forEach(s=>{ s.state=-1; s.lampM.color.setHex(0x9AA5B5); s.lampM.emissive.setHex(0); s.w.scale.set(1,1,1); s.w.position.y=0; s.w.userData.bodyM.color.setHex(0x8A97AD); }); this.overview(); }
+  };
+})();
+
+/* Recarga en caliente: conserva una partida en curso si la página se actualiza */
+function start(data){
+  if(data && data.taller) T = mergeT(data.taller);
+  if(data && data.state && data.state.student){
+    S = data.state;
+    $("menuBtn").hidden = false;
+    $("hubTitle").textContent = `Hola, ${S.student.name.split(" ")[0]}. ¿Qué vas a trabajar hoy?`;
+    $("who").innerHTML = `<b>${esc(S.student.name)}</b><br>C.C. <span class="mono">${esc(S.student.ced)}</span>`; $("who").hidden=false;
+    if(S.screen==="play"){ renderCase(); }
+    if(S.screen==="brief"){ renderMeters($("metersBrief")); $("briefTitle").textContent=`Bienvenido(a), ${S.student.name.split(" ")[0]}`; }
+    if(S.screen==="result" && S.result){ renderResult(); scene.finale(S.result.score); }
+    const scr = S.screen==="teacher" ? "hub" : S.screen;
+    show(scr);
+    if(scr==="hub") renderHub();
+    if(scr==="taller"){ if(T.cur) renderTaller(); else renderSummary(); }
+  } else show("login");
+  updateHud();
+}
+window.claude?.hot?.snapshot?.(()=>({state:S, taller:T}));
+window.claude?.hot?.ready ? window.claude.hot.ready(start) : start(window.claude?.hot?.data ?? {});
+})();
+</script>
+
+</body>
+</html>
